@@ -12,6 +12,13 @@ It handles all interactions with three AI models:
 
 import os
 from openai import OpenAI
+from dotenv import load_dotenv
+
+# Load variables from .env into the system environment
+load_dotenv()
+
+# Access them using os.getenv()
+API_KEY=os.getenv('API_KEY')
 
 # =============================================================================
 # CONFIGURATION
@@ -20,7 +27,7 @@ from openai import OpenAI
 # Initialize the OpenAI client with Elmodels API configuration
 # This client is compatible with OpenAI's API format
 client = OpenAI(
-    api_key="sk-jSf04ArSIATmuMYRE2DusQ",  # API key for Elmodels
+    api_key = API_KEY,  # API key for Elmodels
     base_url="https://elmodels.ngrok.app/v1"  # Base URL for Elmodels API
 )
 

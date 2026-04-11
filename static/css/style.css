@@ -1,0 +1,754 @@
+/**
+ * style.css - Main Stylesheet for Arabic Reading Evaluation App
+ * 
+ * This stylesheet provides:
+ * - RTL (Right-to-Left) layout for Arabic language
+ * - Responsive design for mobile and desktop
+ * - Clean, professional UI with appropriate colors
+ * - Animations for recording state
+ * 
+ * Note: This CSS is designed specifically for Arabic RTL interfaces.
+ */
+
+/* =============================================================================
+   CSS VARIABLES (CUSTOM PROPERTIES)
+   Define colors, spacing, and other reusable values
+   ========================================================================== */
+:root {
+    /* Color Palette */
+    --primary-color: #2563eb;        /* Blue - Primary actions */
+    --primary-hover: #1d4ed8;        /* Darker blue for hover */
+    --success-color: #059669;        /* Green - Success states */
+    --success-hover: #047857;        /* Darker green for hover */
+    --danger-color: #dc2626;         /* Red - Recording/stop */
+    --danger-hover: #b91c1c;         /* Darker red for hover */
+    --warning-color: #d97706;        /* Orange - Warnings */
+    --secondary-color: #6b7280;      /* Gray - Secondary actions */
+    --secondary-hover: #4b5563;      /* Darker gray for hover */
+    
+    /* Background Colors */
+    --bg-color: #f3f4f6;             /* Light gray page background */
+    --card-bg: #ffffff;              /* White card background */
+    --text-display-bg: #f9fafb;      /* Very light gray for text boxes */
+    
+    /* Text Colors */
+    --text-primary: #1f2937;         /* Dark gray for main text */
+    --text-secondary: #6b7280;       /* Medium gray for secondary text */
+    --text-light: #9ca3af;           /* Light gray for hints */
+    
+    /* Spacing */
+    --spacing-xs: 0.25rem;   /* 4px */
+    --spacing-sm: 0.5rem;    /* 8px */
+    --spacing-md: 1rem;      /* 16px */
+    --spacing-lg: 1.5rem;    /* 24px */
+    --spacing-xl: 2rem;      /* 32px */
+    
+    /* Border Radius */
+    --radius-sm: 0.375rem;   /* 6px */
+    --radius-md: 0.5rem;     /* 8px */
+    --radius-lg: 0.75rem;    /* 12px */
+    --radius-full: 9999px;   /* Full circle */
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    
+    /* Typography */
+    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    --font-size-sm: 0.875rem;   /* 14px */
+    --font-size-base: 1rem;      /* 16px */
+    --font-size-lg: 1.125rem;    /* 18px */
+    --font-size-xl: 1.25rem;     /* 20px */
+    --font-size-2xl: 1.5rem;     /* 24px */
+    --font-size-3xl: 2rem;       /* 32px */
+}
+
+/* =============================================================================
+   BASE STYLES & RESET
+   ========================================================================== */
+
+/* Reset box-sizing for all elements */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+/* Remove default margins and set base font */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    line-height: 1.6;
+    color: var(--text-primary);
+    background-color: var(--bg-color);
+    /* RTL support - already set in HTML dir="rtl" but good to have here too */
+    direction: rtl;
+}
+
+/* Headings reset */
+h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+/* Paragraph reset */
+p {
+    margin: 0;
+}
+
+/* Link reset */
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Button reset */
+button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    outline: none;
+}
+
+/* Form elements reset */
+input, select, textarea {
+    font-family: inherit;
+    font-size: inherit;
+}
+
+/* Container for centering content */
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-md);
+}
+
+/* =============================================================================
+   HEADER STYLES
+   ========================================================================== */
+
+.app-header {
+    background: linear-gradient(135deg, var(--primary-color), #3b82f6);
+    color: white;
+    padding: var(--spacing-xl) 0;
+    text-align: center;
+    box-shadow: var(--shadow-md);
+}
+
+.app-header h1 {
+    font-size: var(--font-size-3xl);
+    margin-bottom: var(--spacing-sm);
+}
+
+.app-header .subtitle {
+    font-size: var(--font-size-lg);
+    opacity: 0.9;
+}
+
+/* =============================================================================
+   PROGRESS STEPS
+   ========================================================================== */
+
+.progress-steps {
+    background-color: var(--card-bg);
+    padding: var(--spacing-lg) 0;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: var(--spacing-xl);
+}
+
+.steps-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-xs);
+    opacity: 0.5;
+    transition: opacity 0.3s ease;
+}
+
+.step.active {
+    opacity: 1;
+}
+
+.step-number {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    background-color: var(--secondary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: var(--font-size-lg);
+}
+
+.step.active .step-number {
+    background-color: var(--primary-color);
+}
+
+.step-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.step.active .step-label {
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.step-connector {
+    width: 40px;
+    height: 2px;
+    background-color: #e5e7eb;
+    margin: 0 var(--spacing-sm);
+}
+
+/* =============================================================================
+   MAIN CONTENT & VIEWS
+   ========================================================================== */
+
+.main-content {
+    padding-bottom: var(--spacing-xl);
+    min-height: calc(100vh - 300px);
+}
+
+/* View visibility management */
+.view {
+    display: none;
+}
+
+.view.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =============================================================================
+   CARD COMPONENT
+   ========================================================================== */
+
+.card {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    box-shadow: var(--shadow-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.card h2 {
+    font-size: var(--font-size-2xl);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.card .description {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-lg);
+    font-size: var(--font-size-base);
+}
+
+/* =============================================================================
+   FORM STYLES
+   ========================================================================== */
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.form-group label {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+}
+
+.form-group select {
+    padding: var(--spacing-md);
+    border: 2px solid #e5e7eb;
+    border-radius: var(--radius-md);
+    background-color: white;
+    color: var(--text-primary);
+    font-size: var(--font-size-base);
+    transition: border-color 0.2s ease;
+    cursor: pointer;
+}
+
+.form-group select:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+/* =============================================================================
+   BUTTON STYLES
+   ========================================================================== */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    transition: all 0.2s ease;
+    min-height: 48px;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Primary Button - Blue */
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Success Button - Green */
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover:not(:disabled) {
+    background-color: var(--success-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Secondary Button - Gray */
+.btn-secondary {
+    background-color: #e5e7eb;
+    color: var(--text-primary);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: #d1d5db;
+}
+
+/* Record Button - Red */
+.btn-record {
+    background-color: var(--danger-color);
+    color: white;
+    font-size: var(--font-size-lg);
+    padding: var(--spacing-lg) var(--spacing-xl);
+}
+
+.btn-record:hover:not(:disabled) {
+    background-color: var(--danger-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* Stop Button - Dark Red */
+.btn-stop {
+    background-color: #7f1d1d;
+    color: white;
+    font-size: var(--font-size-lg);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* Audio Button */
+.btn-audio {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    color: white;
+}
+
+.btn-audio:hover:not(:disabled) {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+/* =============================================================================
+   TEXT DISPLAY BOXES
+   ========================================================================== */
+
+.text-display-container {
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-lg);
+    border-top: 2px dashed #e5e7eb;
+}
+
+.text-display-container h3 {
+    font-size: var(--font-size-lg);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.text-display,
+.text-box {
+    background-color: var(--text-display-bg);
+    border: 2px solid #e5e7eb;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    font-size: var(--font-size-xl);
+    line-height: 2;
+    color: var(--text-primary);
+    text-align: justify;
+    min-height: 120px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.original-text {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border-color: var(--success-color);
+}
+
+/* =============================================================================
+   RECORDING SECTION
+   ========================================================================== */
+
+.recording-section {
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background-color: #f9fafb;
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.recording-controls {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.recording-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    color: var(--danger-color);
+    font-weight: 600;
+    margin-top: var(--spacing-md);
+}
+
+.recording-dot {
+    width: 12px;
+    height: 12px;
+    background-color: var(--danger-color);
+    border-radius: var(--radius-full);
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.audio-preview {
+    margin-top: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid #e5e7eb;
+}
+
+.audio-preview h4 {
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.audio-preview audio {
+    width: 100%;
+    max-width: 400px;
+}
+
+/* =============================================================================
+   ACTION BUTTONS CONTAINER
+   ========================================================================== */
+
+.action-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-xl);
+}
+
+/* =============================================================================
+   SCORE DISPLAY
+   ========================================================================== */
+
+.score-card {
+    display: flex;
+    justify-content: center;
+    margin: var(--spacing-xl) 0;
+}
+
+.score-circle {
+    width: 150px;
+    height: 150px;
+    border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--success-color), #10b981);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: var(--shadow-lg);
+}
+
+.score-number {
+    font-size: var(--font-size-3xl);
+    font-weight: 800;
+}
+
+.score-label {
+    font-size: var(--font-size-sm);
+    opacity: 0.9;
+    margin-top: var(--spacing-xs);
+}
+
+/* Low score styling */
+.score-circle.low-score {
+    background: linear-gradient(135deg, var(--danger-color), #ef4444);
+}
+
+/* Medium score styling */
+.score-circle.medium-score {
+    background: linear-gradient(135deg, var(--warning-color), #f59e0b);
+}
+
+/* =============================================================================
+   COMPARISON SECTION
+   ========================================================================== */
+
+.comparison-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+@media (min-width: 768px) {
+    .comparison-container {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.comparison-box h3 {
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.comparison-text {
+    min-height: 150px;
+    font-size: var(--font-size-lg);
+}
+
+/* Highlight differences */
+.text-mismatch {
+    background-color: #fee2e2;
+    text-decoration: line-through;
+    color: var(--danger-color);
+}
+
+.text-match {
+    background-color: #d1fae5;
+}
+
+/* =============================================================================
+   MISTAKES SECTION
+   ========================================================================== */
+
+.mistakes-section {
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    background-color: #fef3c7;
+    border-radius: var(--radius-md);
+    border-right: 4px solid var(--warning-color);
+}
+
+.mistakes-section h3 {
+    color: #92400e;
+    margin-bottom: var(--spacing-sm);
+}
+
+#mistakes-list {
+    margin: 0;
+    padding-right: var(--spacing-lg);
+    color: #92400e;
+}
+
+#mistakes-list li {
+    margin-bottom: var(--spacing-xs);
+}
+
+/* =============================================================================
+   TTS SECTION
+   ========================================================================== */
+
+.tts-section {
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.tts-section h3 {
+    color: #5b21b6;
+    margin-bottom: var(--spacing-xs);
+}
+
+.tts-section .hint {
+    color: #7c3aed;
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+/* =============================================================================
+   ERROR MESSAGES
+   ========================================================================== */
+
+.error-message {
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background-color: #fee2e2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-md);
+    color: #991b1b;
+    text-align: center;
+}
+
+/* =============================================================================
+   FOOTER
+   ========================================================================== */
+
+.app-footer {
+    background-color: #1f2937;
+    color: var(--text-light);
+    padding: var(--spacing-lg) 0;
+    text-align: center;
+    margin-top: auto;
+}
+
+.app-footer p {
+    font-size: var(--font-size-sm);
+}
+
+/* =============================================================================
+   UTILITY CLASSES
+   ========================================================================== */
+
+/* Loading state */
+.btn-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+/* Hidden utility */
+.hidden {
+    display: none !important;
+}
+
+/* =============================================================================
+   RESPONSIVE DESIGN - MOBILE OPTIMIZATION
+   ========================================================================== */
+
+@media (max-width: 640px) {
+    .app-header h1 {
+        font-size: var(--font-size-2xl);
+    }
+    
+    .card {
+        padding: var(--spacing-lg);
+    }
+    
+    .step-label {
+        font-size: 0.75rem;
+    }
+    
+    .step-connector {
+        width: 20px;
+    }
+    
+    .text-display,
+    .text-box {
+        font-size: var(--font-size-lg);
+        padding: var(--spacing-md);
+    }
+    
+    .recording-controls {
+        flex-direction: column;
+    }
+    
+    .btn-record,
+    .btn-stop {
+        width: 100%;
+    }
+    
+    .action-buttons {
+        flex-direction: column-reverse;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+    }
+    
+    .score-circle {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .score-number {
+        font-size: var(--font-size-2xl);
+    }
+}

@@ -27,6 +27,8 @@ const appState = {
     audioBlob: null,          // The recorded audio as a Blob object
     audioUrl: null,           // URL for the recorded audio (for playback)
     ttsAudioUrl: null,        // URL for the generated TTS audio
+    recordingDuration: 0,     // Recording duration in seconds
+    evaluation: null,         // Evaluation results from backend
 };
 
 // =============================================================================
@@ -187,6 +189,8 @@ function goToRecordView() {
 let mediaRecorder = null;      // The MediaRecorder instance
 let audioChunks = [];          // Array to store audio data chunks
 let stream = null;             // The MediaStream from getUserMedia
+let recordingStartTime = null; // Timestamp when recording started
+let recordingDuration = 0;     // Duration of recording in seconds
 
 /**
  * startRecording()
@@ -216,6 +220,10 @@ async function startRecording() {
         
         // Event: Called when recording stops
         mediaRecorder.onstop = () => {
+            // Calculate recording duration
+            recordingDuration = (Date.now() - recordingStartTime) / 1000;
+            appState.recordingDuration = recordingDuration;
+            
             // Combine all audio chunks into a single Blob
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             appState.audioBlob = audioBlob;
@@ -236,9 +244,12 @@ async function startRecording() {
             
             // Stop all tracks in the stream to release the microphone
             stream.getTracks().forEach(track => track.stop());
+            
+            console.log(`Recording duration: ${recordingDuration.toFixed(1)} seconds`);
         };
         
         // Start recording
+        recordingStartTime = Date.now();
         mediaRecorder.start();
         
         // UI: Update buttons visibility
@@ -297,37 +308,53 @@ async function submitForEvaluation() {
     hideError('record-error');
     
     try {
-        // Create a File object from the Blob
-        // We give it a .webm extension as that's the format we're using
+        // Step 1: Transcribe audio
         const audioFile = new File([appState.audioBlob], 'recording.webm', {
             type: 'audio/webm'
         });
         
-        // Prepare form data for upload
         const formData = new FormData();
         formData.append('audio_file', audioFile);
+        formData.append('recording_duration', appState.recordingDuration.toString());
         
-        // Send to backend transcription API
-        const response = await fetch('/api/transcribe', {
+        const transcribeResponse = await fetch('/api/transcribe', {
             method: 'POST',
             body: formData
         });
         
-        const data = await response.json();
+        const transcribeData = await transcribeResponse.json();
         
-        if (!response.ok) {
-            throw new Error(data.error || 'فشل في تحويل الصوت لنص');
+        if (!transcribeResponse.ok) {
+            throw new Error(transcribeData.error || 'فشل في تحويل الصوت لنص');
         }
         
-        // Store the transcribed text
-        appState.transcribedText = data.transcription;
+        appState.transcribedText = transcribeData.transcription;
+        
+        // Step 2: Evaluate reading performance
+        const evalFormData = new FormData();
+        evalFormData.append('original_text', appState.generatedText);
+        evalFormData.append('transcribed_text', appState.transcribedText);
+        evalFormData.append('recording_duration', appState.recordingDuration.toString());
+        
+        const evalResponse = await fetch('/api/evaluate', {
+            method: 'POST',
+            body: evalFormData
+        });
+        
+        const evalData = await evalResponse.json();
+        
+        if (!evalResponse.ok) {
+            throw new Error(evalData.error || 'فشل في تقييم القراءة');
+        }
+        
+        appState.evaluation = evalData.evaluation;
         
         // Navigate to evaluation view
         showEvaluationView();
         
     } catch (error) {
         showError('record-error', error.message);
-        console.error('Error transcribing audio:', error);
+        console.error('Error in evaluation:', error);
         
     } finally {
         // UI: Restore button state
@@ -345,24 +372,182 @@ async function submitForEvaluation() {
  * showEvaluationView()
  * 
  * Prepares and displays View 3 (Evaluation).
- * Calculates score, displays comparison, and highlights differences.
+ * Displays detailed evaluation metrics from backend.
  */
 function showEvaluationView() {
-    // Display original text
-    document.getElementById('eval-original-text').textContent = appState.generatedText;
+    const evalData = appState.evaluation;
     
-    // Display transcribed text
+    // Display original and transcribed text
+    document.getElementById('eval-original-text').textContent = appState.generatedText;
     document.getElementById('eval-transcribed-text').textContent = appState.transcribedText;
     
-    // Calculate and display score
-    const score = calculateScore(appState.generatedText, appState.transcribedText);
-    displayScore(score);
-    
-    // Show mistakes analysis
-    analyzeMistakes(appState.generatedText, appState.transcribedText);
+    // Display comprehensive evaluation
+    if (evalData) {
+        displayDetailedEvaluation(evalData);
+    } else {
+        // Fallback to simple evaluation if backend evaluation not available
+        const score = calculateScore(appState.generatedText, appState.transcribedText);
+        displayScore(score);
+        analyzeMistakes(appState.generatedText, appState.transcribedText);
+    }
     
     // Switch to View 3
     showView(3);
+}
+
+/**
+ * displayDetailedEvaluation(evaluation)
+ * 
+ * Displays comprehensive evaluation metrics from backend.
+ * 
+ * @param {object} evaluation - Evaluation data from backend
+ */
+function displayDetailedEvaluation(evaluation) {
+    // Display overall score
+    const overallScore = Math.round(evaluation.overall_score);
+    displayScore(overallScore);
+    
+    // Update grade badge if exists
+    const gradeBadge = document.getElementById('grade-badge');
+    if (gradeBadge) {
+        gradeBadge.textContent = evaluation.grade;
+        gradeBadge.className = `grade-badge ${evaluation.grade_color}`;
+    }
+    
+    // Display word match accuracy
+    const wordMatchEl = document.getElementById('word-match-score');
+    if (wordMatchEl) {
+        wordMatchEl.textContent = `${evaluation.word_match_score}%`;
+    }
+    
+    // Display correct/missing/extra words counts
+    const correctCountEl = document.getElementById('correct-count');
+    const missingCountEl = document.getElementById('missing-count');
+    const extraCountEl = document.getElementById('extra-count');
+    const hesitationCountEl = document.getElementById('hesitation-count');
+    
+    if (correctCountEl) correctCountEl.textContent = evaluation.correct_words_count;
+    if (missingCountEl) missingCountEl.textContent = evaluation.missing_words_count;
+    if (extraCountEl) extraCountEl.textContent = evaluation.extra_words_count;
+    if (hesitationCountEl) hesitationCountEl.textContent = evaluation.hesitation_count;
+    
+    // Display pace information
+    const paceScoreEl = document.getElementById('pace-score');
+    const paceEvalEl = document.getElementById('pace-evaluation');
+    const paceFeedbackEl = document.getElementById('pace-feedback');
+    const durationInfoEl = document.getElementById('duration-info');
+    
+    if (paceScoreEl) paceScoreEl.textContent = `${evaluation.pace_score}%`;
+    if (paceEvalEl) paceEvalEl.textContent = evaluation.pace_evaluation;
+    if (paceFeedbackEl) paceFeedbackEl.textContent = evaluation.pace_feedback;
+    if (durationInfoEl) {
+        durationInfoEl.textContent = `المدة: ${evaluation.actual_duration_seconds}ث (متوقع: ${evaluation.expected_duration_seconds}ث)`;
+    }
+    
+    // Display detailed mistakes analysis
+    displayDetailedMistakes(evaluation);
+    
+    // Display summary
+    const summaryEl = document.getElementById('evaluation-summary');
+    if (summaryEl && evaluation.summary) {
+        summaryEl.innerHTML = `
+            <div class="summary-item">
+                <span class="summary-label">الدقة:</span>
+                <span class="summary-value">${evaluation.summary.accuracy}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">الإيقاع:</span>
+                <span class="summary-value">${evaluation.summary.pace}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">الطلاقة:</span>
+                <span class="summary-value">${evaluation.summary.fluency}</span>
+            </div>
+        `;
+    }
+}
+
+/**
+ * displayDetailedMistakes(evaluation)
+ * 
+ * Displays detailed mistakes list with categorization.
+ * 
+ * @param {object} evaluation - Evaluation data from backend
+ */
+function displayDetailedMistakes(evaluation) {
+    const mistakesContainer = document.getElementById('mistakes-container');
+    const mistakesList = document.getElementById('mistakes-list');
+    
+    if (!mistakesList) return;
+    
+    // Clear previous mistakes
+    mistakesList.innerHTML = '';
+    
+    const { missing_words, extra_words, hesitation_words, correct_words_count, total_original_words } = evaluation;
+    
+    // Check if perfect reading
+    if (missing_words.length === 0 && extra_words.length === 0 && hesitation_words.length === 0) {
+        const li = document.createElement('li');
+        li.className = 'perfect-reading';
+        li.innerHTML = '🎉 قراءة ممتازة! لا يوجد أخطاء.';
+        mistakesList.appendChild(li);
+        if (mistakesContainer) mistakesContainer.style.display = 'block';
+        return;
+    }
+    
+    // Add section headers and items
+    if (missing_words.length > 0) {
+        const header = document.createElement('li');
+        header.className = 'mistake-category';
+        header.textContent = `❌ كلمات لم تنطق (${missing_words.length}):`;
+        mistakesList.appendChild(header);
+        
+        missing_words.forEach(word => {
+            const li = document.createElement('li');
+            li.className = 'missing-word';
+            li.innerHTML = `<span class="word-text">"${word}"</span> <span class="mistake-type">- لم تُنطق</span>`;
+            mistakesList.appendChild(li);
+        });
+    }
+    
+    if (extra_words.length > 0) {
+        const header = document.createElement('li');
+        header.className = 'mistake-category';
+        header.textContent = `➕ كلمات إضافية غير موجودة في النص (${extra_words.length}):`;
+        mistakesList.appendChild(header);
+        
+        extra_words.forEach(word => {
+            const li = document.createElement('li');
+            li.className = 'extra-word';
+            li.innerHTML = `<span class="word-text">"${word}"</span> <span class="mistake-type">- كلمة زائدة</span>`;
+            mistakesList.appendChild(li);
+        });
+    }
+    
+    if (hesitation_words.length > 0) {
+        const header = document.createElement('li');
+        header.className = 'mistake-category';
+        header.textContent = `💭 أصوات تردد (${hesitation_words.length}):`;
+        mistakesList.appendChild(header);
+        
+        hesitation_words.forEach(word => {
+            const li = document.createElement('li');
+            li.className = 'hesitation-word';
+            li.innerHTML = `<span class="word-text">"${word}"</span> <span class="mistake-type">- صوت تردد</span>`;
+            mistakesList.appendChild(li);
+        });
+    }
+    
+    // Add accuracy summary
+    const summaryHeader = document.createElement('li');
+    summaryHeader.className = 'mistake-summary';
+    summaryHeader.innerHTML = `
+        <strong>الملخص:</strong> ${correct_words_count} من ${total_original_words} كلمة صحيحة
+        (${evaluation.word_match_score}% دقة)
+    `;
+    mistakesList.appendChild(summaryHeader);
+    
+    if (mistakesContainer) mistakesContainer.style.display = 'block';
 }
 
 /**
@@ -609,6 +794,9 @@ function resetApp() {
     appState.audioBlob = null;
     appState.audioUrl = null;
     appState.ttsAudioUrl = null;
+    appState.recordingDuration = 0;
+    appState.evaluation = null;
+    recordingDuration = 0;
     
     // Reset UI elements
     document.getElementById('generated-text-container').style.display = 'none';

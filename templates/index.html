@@ -181,12 +181,85 @@
                         مقارنة بين النص الأصلي والنص الذي تم التعرف عليه من تسجيلك.
                     </p>
                     
-                    <!-- Score Card -->
+                    <!-- Score Card with Grade -->
                     <div class="score-card">
                         <div class="score-circle">
                             <span id="score-value" class="score-number">0%</span>
-                            <span class="score-label">نسبة التطابق</span>
+                            <span class="score-label">الدرجة الإجمالية</span>
                         </div>
+                        <div id="grade-badge" class="grade-badge">-</div>
+                    </div>
+                    
+                    <!-- Summary Metrics -->
+                    <div id="evaluation-summary" class="evaluation-summary">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                    
+                    <!-- Detailed Metrics Grid -->
+                    <div class="metrics-grid">
+                        <!-- Accuracy Metric -->
+                        <div class="metric-card">
+                            <div class="metric-icon">🎯</div>
+                            <div class="metric-content">
+                                <span class="metric-label">دقة الكلمات</span>
+                                <span id="word-match-score" class="metric-value">-</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Pace Metric -->
+                        <div class="metric-card">
+                            <div class="metric-icon">⏱️</div>
+                            <div class="metric-content">
+                                <span class="metric-label">إيقاع القراءة</span>
+                                <span id="pace-score" class="metric-value">-</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Correct Words -->
+                        <div class="metric-card correct">
+                            <div class="metric-icon">✅</div>
+                            <div class="metric-content">
+                                <span class="metric-label">كلمات صحيحة</span>
+                                <span id="correct-count" class="metric-value">-</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Missing Words -->
+                        <div class="metric-card missing">
+                            <div class="metric-icon">❌</div>
+                            <div class="metric-content">
+                                <span class="metric-label">كلمات ناقصة</span>
+                                <span id="missing-count" class="metric-value">-</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Extra Words -->
+                        <div class="metric-card extra">
+                            <div class="metric-icon">➕</div>
+                            <div class="metric-content">
+                                <span class="metric-label">كلمات زائدة</span>
+                                <span id="extra-count" class="metric-value">-</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Hesitation -->
+                        <div class="metric-card hesitation">
+                            <div class="metric-icon">💭</div>
+                            <div class="metric-content">
+                                <span class="metric-label">ترددات</span>
+                                <span id="hesitation-count" class="metric-value">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pace Details -->
+                    <div class="pace-details">
+                        <h4>📈 تقييم السرعة:</h4>
+                        <div class="pace-info">
+                            <span id="pace-evaluation" class="pace-badge">-</span>
+                            <span id="pace-feedback" class="pace-feedback">-</span>
+                        </div>
+                        <div id="duration-info" class="duration-info">-</div>
                     </div>
                     
                     <!-- Text Comparison -->
@@ -206,7 +279,7 @@
                     
                     <!-- Mistakes Summary -->
                     <div id="mistakes-container" class="mistakes-section" style="display: none;">
-                        <h3>⚠️ الملاحظات:</h3>
+                        <h3>⚠️ تحليل الأخطاء:</h3>
                         <ul id="mistakes-list"></ul>
                     </div>
                     

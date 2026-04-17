@@ -99,18 +99,11 @@ def init_db():
             difficulty TEXT NOT NULL,
             length TEXT NOT NULL,
             generated_text TEXT NOT NULL,
-            generated_text_clean TEXT,
             assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             completed BOOLEAN DEFAULT 0,
             FOREIGN KEY (student_id) REFERENCES students(id)
         )
     """)
-
-    # Add generated_text_clean column if missing (migration for existing DBs)
-    cursor.execute("PRAGMA table_info(assignments)")
-    assignment_columns = {row[1] for row in cursor.fetchall()}
-    if assignment_columns and "generated_text_clean" not in assignment_columns:
-        cursor.execute("ALTER TABLE assignments ADD COLUMN generated_text_clean TEXT")
 
     # Settings table (admin-customizable parameters)
     cursor.execute("""
@@ -430,21 +423,14 @@ async def api_create_assignment(
     try:
         generated_text = ask_nuha(difficulty, length)
 
-        # Remove tashkeel once at creation time
-        try:
-            generated_text_clean = remove_tashkeel(generated_text)
-        except Exception as te:
-            print(f"[WARN] Tashkeel removal failed during assignment creation: {te}")
-            generated_text_clean = generated_text
-
         conn = sqlite3.connect(str(DB_PATH))
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO assignments (student_id, difficulty, length, generated_text, generated_text_clean)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO assignments (student_id, difficulty, length, generated_text)
+            VALUES (?, ?, ?, ?)
             """,
-            (student_id, difficulty, length, generated_text, generated_text_clean)
+            (student_id, difficulty, length, generated_text)
         )
         assignment_id = cursor.lastrowid
         conn.commit()
@@ -453,7 +439,6 @@ async def api_create_assignment(
         return JSONResponse({
             "id": assignment_id,
             "generated_text": generated_text,
-            "generated_text_clean": generated_text_clean,
             "message": "تم إنشاء النص وتحديده للطالب بنجاح"
         })
     except Exception as e:
@@ -607,10 +592,10 @@ async def api_transcribe(
         transcribed_text = transcribe_audio(str(recording_filepath))
 
         # Remove tashkeel via LLM
-        try:
-            transcribed_text = remove_tashkeel(transcribed_text)
-        except Exception as te:
-            print(f"[WARN] Tashkeel removal failed: {te}")
+        # try:
+        #     transcribed_text = remove_tashkeel(transcribed_text)
+        # except Exception as te:
+        #     print(f"[WARN] Tashkeel removal failed: {te}")
 
         recording_url = f"/recordings/{recording_filename}"
 
@@ -648,12 +633,11 @@ async def api_evaluate(
             return JSONResponse(status_code=404, content={"error": "التكليف غير موجود"})
         assignment = dict(assignment)
 
-        # Evaluate using clean original text for comparison
+        # Evaluate
         evaluation = evaluate_reading(
-            original_text_raw=assignment["generated_text"],
-            original_text_clean=assignment.get("generated_text_clean") or assignment["generated_text"],
-            transcribed_text=transcribed_text,
-            recording_duration=recording_duration
+            assignment["generated_text"],
+            transcribed_text,
+            recording_duration
         )
 
         # Persist evaluation
@@ -696,42 +680,22 @@ async def api_evaluate(
 @app.post("/api/generate-speech")
 async def api_generate_speech(
     text: str = Form(...),
-    evaluation_id: Optional[str] = Form(None),
-    assignment_id: Optional[int] = Form(None)
+    evaluation_id: Optional[str] = Form(None)
 ):
-    """Generate TTS audio from Arabic text using Elm-TTS.
-    
-    If assignment_id is provided, uses the pre-stored clean text from the assignment.
-    Otherwise, removes tashkeel from the provided text on the fly.
-    """
+    """Generate TTS audio from Arabic text using Elm-TTS."""
     try:
         if not text or not text.strip():
             return JSONResponse(status_code=400, content={"error": "النص فارغ"})
 
-        tts_text = text
-
-        # Prefer stored clean text from assignment
-        if assignment_id:
-            conn = sqlite3.connect(str(DB_PATH))
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT generated_text_clean FROM assignments WHERE id = ?",
-                (assignment_id,)
-            )
-            row = cursor.fetchone()
-            conn.close()
-            if row and row[0]:
-                tts_text = row[0]
-        else:
-            # Fallback: remove tashkeel on the fly
-            try:
-                tts_text = remove_tashkeel(text)
-            except Exception as te:
-                print(f"[WARN] Tashkeel removal failed for TTS: {te}")
+        # Remove tashkeel before TTS
+        try:
+            text = remove_tashkeel(text)
+        except Exception as te:
+            print(f"[WARN] Tashkeel removal failed for TTS: {te}")
 
         filename = f"speech_{uuid.uuid4().hex}.mp3"
         filepath = SPEECHES_DIR / filename
-        generate_speech_file(tts_text, str(filepath))
+        generate_speech_file(text, str(filepath))
         audio_url = f"/speeches/{filename}"
 
         if evaluation_id:
@@ -878,32 +842,33 @@ async def health_check():
 # =============================================================================
 
 def evaluate_reading(
-    original_text_raw: str,
-    original_text_clean: str,
+    original_text: str,
     transcribed_text: str,
     recording_duration: float = 0.0
 ) -> dict:
     """
-    Evaluate reading performance by comparing clean original and clean transcribed text.
+    Evaluate reading performance by comparing original and transcribed text.
 
-    The diff display uses the raw original text (with tashkeel) but the alignment
-    and scoring are computed on the clean versions (without tashkeel).
     No normalization is applied — words are compared as-is (case-insensitive).
     No hesitation sound logic is used.
     All scoring parameters are read from the settings table.
     """
     settings = get_settings()
 
-    # Tokenise for DISPLAY (raw text preserved)
-    original_tokens_raw = original_text_raw.split()
-    transcribed_tokens_raw = transcribed_text.split()
+        # Remove tashkeel via LLM
+    try:
+        original_tokens_no_tashkeel = remove_tashkeel(original_text)
+    except Exception as te:
+        print(f"[WARN] Tashkeel removal failed: {te}")
 
-    # Tokenise for COMPARISON (clean text, lower-cased)
-    original_tokens_clean = original_text_clean.split()
-    original_words = [w.lower() for w in original_tokens_clean]
+    
+    # Raw tokenization (preserve original words, only lower-case for comparison)
+    original_tokens_raw = original_tokens_no_tashkeel.split()
+    transcribed_tokens_raw = transcribed_text.split()
+    original_words = [w.lower() for w in original_tokens_raw]
     transcribed_words = [w.lower() for w in transcribed_tokens_raw]
 
-    # Diff token lists (display uses raw original tokens)
+    # Diff token lists
     original_diff = []
     transcribed_diff = []
     correct_words = []
@@ -914,8 +879,7 @@ def evaluate_reading(
     while i < len(original_words) and j < len(transcribed_words):
         orig_word = original_words[i]
         trans_word = transcribed_words[j]
-        # Map clean index back to raw original token for display
-        orig_raw = original_tokens_raw[min(i, len(original_tokens_raw) - 1)] if original_tokens_raw else orig_word
+        orig_raw = original_tokens_raw[i]
         trans_raw = transcribed_tokens_raw[j]
 
         if orig_word == trans_word:
@@ -941,7 +905,7 @@ def evaluate_reading(
                 for k in range(i + 1, min(i + 4, len(original_words))):
                     if original_words[k] == trans_word:
                         for miss_idx in range(i, k):
-                            miss_raw = original_tokens_raw[min(miss_idx, len(original_tokens_raw) - 1)] if original_tokens_raw else original_words[miss_idx]
+                            miss_raw = original_tokens_raw[miss_idx]
                             miss_norm = original_words[miss_idx]
                             original_diff.append({"word": miss_raw, "type": "missing"})
                             missing_words.append(miss_norm)
@@ -950,8 +914,7 @@ def evaluate_reading(
                         break
 
             if not found_later:
-                miss_raw = original_tokens_raw[min(i, len(original_tokens_raw) - 1)] if original_tokens_raw else orig_word
-                original_diff.append({"word": miss_raw, "type": "missing"})
+                original_diff.append({"word": orig_raw, "type": "missing"})
                 missing_words.append(orig_word)
                 transcribed_diff.append({"word": trans_raw, "type": "extra"})
                 extra_words.append(trans_word)
@@ -959,7 +922,7 @@ def evaluate_reading(
                 j += 1
 
     while i < len(original_words):
-        miss_raw = original_tokens_raw[min(i, len(original_tokens_raw) - 1)] if original_tokens_raw else original_words[i]
+        miss_raw = original_tokens_raw[i]
         miss_norm = original_words[i]
         original_diff.append({"word": miss_raw, "type": "missing"})
         missing_words.append(miss_norm)

@@ -261,7 +261,10 @@ def remove_tashkeel(text: str) -> str:
             "أعد النص كما هو بالضبط لكن بدون أي تشكيل."
         )
         
-        user_prompt = f"أزل التشكيل من النص التالي وأعد النص بدون أي تشكيل:\n\n{text}"
+        user_prompt = (
+            "أزل التشكيل من النص التالي وأعد النص بدون أي تشكيل:"
+            f"{text}"
+        )
         
         messages = [
             {"role": "system", "content": system_prompt},

@@ -787,6 +787,34 @@ input, select, textarea {
 }
 
 /* =============================================================================
+   DIFF VISUALISATION
+   ========================================================================== */
+
+.diff-match {
+    color: #059669;
+    font-weight: 600;
+    background-color: #ecfdf5;
+    padding: 0 4px;
+    border-radius: 4px;
+}
+
+.diff-missing {
+    color: #9ca3af;
+    text-decoration: line-through;
+    background-color: #f3f4f6;
+    padding: 0 4px;
+    border-radius: 4px;
+}
+
+.diff-extra {
+    color: #dc2626;
+    text-decoration: underline wavy #dc2626;
+    background-color: #fef2f2;
+    padding: 0 4px;
+    border-radius: 4px;
+}
+
+/* =============================================================================
    MISTAKES SECTION
    ========================================================================== */
 

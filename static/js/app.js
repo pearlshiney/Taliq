@@ -394,9 +394,14 @@ async function submitForEvaluation() {
 function showEvaluationView() {
     const evalData = appState.evaluation;
     
-    // Display original and transcribed text
-    document.getElementById('eval-original-text').textContent = appState.generatedText;
-    document.getElementById('eval-transcribed-text').textContent = appState.transcribedText;
+    // Display original and transcribed text with diff highlighting
+    if (evalData && evalData.diff) {
+        renderDiff(evalData.diff);
+    } else {
+        // Fallback to plain text if diff not available
+        document.getElementById('eval-original-text').textContent = appState.generatedText;
+        document.getElementById('eval-transcribed-text').textContent = appState.transcribedText;
+    }
     
     // Display comprehensive evaluation
     if (evalData) {
@@ -410,6 +415,62 @@ function showEvaluationView() {
     
     // Switch to View 3
     showView(3);
+}
+
+/**
+ * renderDiff(diff)
+ * 
+ * Renders the word-level diff into the comparison text boxes.
+ * 
+ * @param {object} diff - Diff object with original and transcribed token arrays
+ */
+function renderDiff(diff) {
+    const originalEl = document.getElementById('eval-original-text');
+    const transcribedEl = document.getElementById('eval-transcribed-text');
+    
+    // Build original HTML: match = green, missing = gray
+    const originalHtml = (diff.original || [])
+        .map(token => {
+            const word = escapeHtml(token.word);
+            if (token.type === 'match') {
+                return `<span class="diff-match">${word}</span>`;
+            } else if (token.type === 'missing') {
+                return `<span class="diff-missing">${word}</span>`;
+            }
+            return word;
+        })
+        .join(' ');
+    
+    // Build transcribed HTML: match = green, extra = red underline
+    const transcribedHtml = (diff.transcribed || [])
+        .map(token => {
+            const word = escapeHtml(token.word);
+            if (token.type === 'match') {
+                return `<span class="diff-match">${word}</span>`;
+            } else if (token.type === 'extra') {
+                return `<span class="diff-extra">${word}</span>`;
+            }
+            return word;
+        })
+        .join(' ');
+    
+    originalEl.innerHTML = originalHtml || '<em class="text-muted">لا يوجد نص</em>';
+    transcribedEl.innerHTML = transcribedHtml || '<em class="text-muted">لا يوجد نص</em>';
+}
+
+/**
+ * escapeHtml(text)
+ * 
+ * Escapes HTML special characters to prevent XSS.
+ * 
+ * @param {string} text - Raw text to escape
+ * @returns {string} Escaped text safe for innerHTML
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 /**

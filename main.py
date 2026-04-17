@@ -342,32 +342,39 @@ async def api_evaluate(
 
 
 def evaluate_reading(
-    original_text: str, 
-    transcribed_text: str, 
+    original_text: str,
+    transcribed_text: str,
     recording_duration: float = 0.0
 ) -> dict:
     """
     Evaluate reading performance by comparing original and transcribed text.
-    
+
     Metrics calculated:
     1. Word Match Score: Percentage of correctly matched words
     2. Missing Words: Words from original that weren't transcribed
     3. Extra Words: Words transcribed that aren't in original (hesitation sounds)
     4. Pace Score: Evaluation of reading speed vs expected duration
-    
+    5. Diff view: word-level alignment with match / missing / extra labels
+
     Args:
         original_text: The original text that should have been read
         transcribed_text: The text transcribed from user's audio
         recording_duration: Recording duration in seconds
-    
+
     Returns:
-        Dictionary containing all evaluation metrics
+        Dictionary containing all evaluation metrics and a diff object
     """
-    # Normalize text: remove punctuation, normalize spaces
-    def normalize(text: str) -> list:
-        # Arabic-specific normalization
+    import re
+
+    # -------------------------------------------------------------------------
+    # Tokenisation (preserve raw tokens for display, normalise for comparison)
+    # -------------------------------------------------------------------------
+    original_tokens_raw = original_text.split()
+    transcribed_tokens_raw = transcribed_text.split()
+
+    def normalize_word(word: str) -> str:
         normalized = (
-            text
+            word
             .replace('أ', 'ا')
             .replace('إ', 'ا')
             .replace('آ', 'ا')
@@ -376,112 +383,131 @@ def evaluate_reading(
             .replace('ؤ', 'و')
             .replace('ئ', 'ي')
         )
-        # Remove punctuation and extra spaces
-        import re
-        normalized = re.sub(r'[^\w\s\u0600-\u06FF]', ' ', normalized)
-        normalized = re.sub(r'\s+', ' ', normalized).strip()
-        return normalized.lower().split()
-    
-    original_words = normalize(original_text)
-    transcribed_words = normalize(transcribed_text)
-    
-    # Common hesitation sounds in Arabic ( filler words, stutters)
+        normalized = re.sub(r'[^\w\s\u0600-\u06FF]', '', normalized)
+        return normalized.lower().strip()
+
+    original_words = [normalize_word(w) for w in original_tokens_raw]
+    transcribed_words = [normalize_word(w) for w in transcribed_tokens_raw]
+
+    # Common hesitation sounds in Arabic (filler words, stutters)
     hesitation_sounds = {
         'مم', 'ام', 'ااه', 'اوم', 'هم', 'ها', 'هو', 'اي', 'ايه',
         'umm', 'uh', 'ah', 'um', 'oh', 'eh', 'hmm', 'mm', 'err', 'er'
     }
-    
-    # Find matches using longest common subsequence approach
+
+    # -------------------------------------------------------------------------
+    # Alignment walk – produces both metrics and diff token arrays
+    # -------------------------------------------------------------------------
     correct_words = []
     missing_words = []
     extra_words = []
     hesitation_words = []
-    
-    # Simple word-by-word matching with alignment
+
+    original_diff = []      # {"word": raw, "type": "match" | "missing"}
+    transcribed_diff = []   # {"word": raw, "type": "match" | "extra"}
+
     i, j = 0, 0
     while i < len(original_words) and j < len(transcribed_words):
         orig_word = original_words[i]
         trans_word = transcribed_words[j]
-        
+        orig_raw = original_tokens_raw[i]
+        trans_raw = transcribed_tokens_raw[j]
+
         if orig_word == trans_word:
+            original_diff.append({"word": orig_raw, "type": "match"})
+            transcribed_diff.append({"word": trans_raw, "type": "match"})
             correct_words.append(orig_word)
             i += 1
             j += 1
         elif trans_word in hesitation_sounds:
-            # This is a hesitation sound, skip it
+            # Hesitation sounds have no counterpart in the original text
+            transcribed_diff.append({"word": trans_raw, "type": "extra"})
             hesitation_words.append(trans_word)
+            extra_words.append(trans_word)
             j += 1
         else:
-            # Check if it's an extra word or a wrong word
-            # Look ahead to see if current original word appears later in transcribed
+            # Look ahead in transcribed for the current original word
             found_later = False
             for k in range(j + 1, min(j + 4, len(transcribed_words))):
                 if transcribed_words[k] == orig_word:
-                    # Words between j and k are extra/missing
+                    # Words j … k-1 are extra/unrecognized
                     for extra_idx in range(j, k):
-                        extra_word = transcribed_words[extra_idx]
-                        if extra_word in hesitation_sounds:
-                            hesitation_words.append(extra_word)
+                        extra_raw = transcribed_tokens_raw[extra_idx]
+                        extra_norm = transcribed_words[extra_idx]
+                        transcribed_diff.append({"word": extra_raw, "type": "extra"})
+                        if extra_norm in hesitation_sounds:
+                            hesitation_words.append(extra_norm)
                         else:
-                            extra_words.append(extra_word)
+                            extra_words.append(extra_norm)
                     j = k
                     found_later = True
                     break
-            
+
             if not found_later:
-                # Check if current transcribed word appears later in original
+                # Look ahead in original for the current transcribed word
                 for k in range(i + 1, min(i + 4, len(original_words))):
                     if original_words[k] == trans_word:
-                        # Words between i and k are missing
+                        # Words i … k-1 are missing
                         for miss_idx in range(i, k):
-                            missing_words.append(original_words[miss_idx])
+                            miss_raw = original_tokens_raw[miss_idx]
+                            miss_norm = original_words[miss_idx]
+                            original_diff.append({"word": miss_raw, "type": "missing"})
+                            missing_words.append(miss_norm)
                         i = k
                         found_later = True
                         break
-            
+
             if not found_later:
-                # Mismatch - count as wrong and move both
+                # Straight mismatch – count both and move on
+                original_diff.append({"word": orig_raw, "type": "missing"})
                 missing_words.append(orig_word)
                 if trans_word not in hesitation_sounds:
+                    transcribed_diff.append({"word": trans_raw, "type": "extra"})
                     extra_words.append(trans_word)
                 else:
+                    transcribed_diff.append({"word": trans_raw, "type": "extra"})
                     hesitation_words.append(trans_word)
                 i += 1
                 j += 1
-    
-    # Handle remaining words
+
+    # Remaining original words are all missing
     while i < len(original_words):
-        missing_words.append(original_words[i])
+        miss_raw = original_tokens_raw[i]
+        miss_norm = original_words[i]
+        original_diff.append({"word": miss_raw, "type": "missing"})
+        missing_words.append(miss_norm)
         i += 1
-    
+
+    # Remaining transcribed words are all extra
     while j < len(transcribed_words):
-        word = transcribed_words[j]
-        if word in hesitation_sounds:
-            hesitation_words.append(word)
+        extra_raw = transcribed_tokens_raw[j]
+        extra_norm = transcribed_words[j]
+        transcribed_diff.append({"word": extra_raw, "type": "extra"})
+        if extra_norm in hesitation_sounds:
+            hesitation_words.append(extra_norm)
         else:
-            extra_words.append(word)
+            extra_words.append(extra_norm)
         j += 1
-    
-    # Calculate Word Match Score
+
+    # -------------------------------------------------------------------------
+    # Scoring
+    # -------------------------------------------------------------------------
     total_original_words = len(original_words)
     if total_original_words > 0:
         word_match_score = round((len(correct_words) / total_original_words) * 100, 1)
     else:
         word_match_score = 0.0
-    
-    # Calculate Pace Score
-    # Expected reading speed: ~120 words per minute (2 words per second) for normal pace
-    # Range: 80-150 wpm is acceptable
+
     words_per_minute_normal = 120
     expected_duration_seconds = (total_original_words / words_per_minute_normal) * 60
-    
+
     pace_score = 100.0
     pace_evaluation = "مثالي"
     pace_feedback = "سرعة القراءة ممتازة"
-    
+
     if recording_duration > 0 and expected_duration_seconds > 0:
         ratio = recording_duration / expected_duration_seconds
-        
+
         if 0.8 <= ratio <= 1.3:
             pace_score = 100.0
             pace_evaluation = "مثالي"
@@ -504,12 +530,9 @@ def evaluate_reading(
             pace_feedback = "القراءة بطيئة جداً - حاول القراءة بثقة أكبر"
     else:
         expected_duration_seconds = 0.0
-    
-    # Calculate Overall Score (weighted average)
-    # Word match: 70%, Pace: 30%
+
     overall_score = round((word_match_score * 0.7) + (pace_score * 0.3), 1)
-    
-    # Determine grade
+
     if overall_score >= 90:
         grade = "ممتاز"
         grade_color = "excellent"
@@ -525,13 +548,13 @@ def evaluate_reading(
     else:
         grade = "ضعيف"
         grade_color = "poor"
-    
+
     return {
         # Core metrics
         "overall_score": overall_score,
         "grade": grade,
         "grade_color": grade_color,
-        
+
         # Word matching metrics
         "word_match_score": word_match_score,
         "total_original_words": total_original_words,
@@ -543,7 +566,7 @@ def evaluate_reading(
         "extra_words_count": len(extra_words),
         "hesitation_words": hesitation_words,
         "hesitation_count": len(hesitation_words),
-        
+
         # Pace metrics
         "pace_score": pace_score,
         "pace_evaluation": pace_evaluation,
@@ -551,7 +574,13 @@ def evaluate_reading(
         "expected_duration_seconds": round(expected_duration_seconds, 1),
         "actual_duration_seconds": round(recording_duration, 1),
         "words_per_minute": round((len(transcribed_words) / recording_duration) * 60, 1) if recording_duration > 0 else 0,
-        
+
+        # Visual diff
+        "diff": {
+            "original": original_diff,
+            "transcribed": transcribed_diff
+        },
+
         # Summary
         "summary": {
             "accuracy": f"{word_match_score}%",

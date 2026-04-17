@@ -3,7 +3,7 @@
     Arabic Reading Evaluation App - Dashboard Template
     
     This page displays:
-    1. Aggregated student metrics (cards)
+    1. School-wide management KPI metrics
     2. A clickable list of all evaluation runs
     3. A detail modal for each run
 -->
@@ -20,7 +20,7 @@
     <header class="app-header">
         <div class="container">
             <h1>📊 لوحة النتائج</h1>
-            <p class="subtitle">عرض جميع نتائج تقييم مهارات القراءة للطلاب</p>
+            <p class="subtitle">لوحة تحكم لمتخذي القرار - إحصائيات شاملة لتقييم القراءة</p>
             <a href="/" class="dashboard-link">← العودة للتطبيق</a>
         </div>
     </header>
@@ -35,13 +35,46 @@
             </div>
             <div id="dashboard-error" class="error-message" style="display: none;"></div>
             
-            <!-- ====== SECTION 1: STUDENT AGGREGATES ====== -->
-            <section id="students-section" class="view" style="display: none;">
+            <!-- ====== SECTION 1: MANAGEMENT KPIs ====== -->
+            <section id="stats-section" class="view" style="display: none;">
+                <!-- Big Numbers -->
                 <div class="card">
-                    <h2>👥 ملخص الطلاب</h2>
-                    <p class="description">إحصائيات مجمعة لكل طالب.</p>
-                    <div id="students-grid" class="students-grid">
-                        <!-- Student cards populated by JS -->
+                    <h2>📈 المؤشرات الرئيسية</h2>
+                    <p class="description">إحصائيات مجمعة على مستوى المدرسة.</p>
+                    <div id="kpi-grid" class="kpi-grid">
+                        <!-- KPI cards populated by JS -->
+                    </div>
+                </div>
+                
+                <!-- Breakdown Row -->
+                <div class="kpi-row">
+                    <div class="card">
+                        <h2>📚 توزيع مستوى الصعوبة</h2>
+                        <div id="difficulty-breakdown" class="breakdown-grid">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2>📄 توزيع طول النص</h2>
+                        <div id="length-breakdown" class="breakdown-grid">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Distributions Row -->
+                <div class="kpi-row">
+                    <div class="card">
+                        <h2>🎓 توزيع التقديرات</h2>
+                        <div id="grade-distribution">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    <div class="card">
+                        <h2>⏱️ توزيع إيقاع القراءة</h2>
+                        <div id="pace-distribution">
+                            <!-- Populated by JS -->
+                        </div>
                     </div>
                 </div>
             </section>
@@ -181,10 +214,9 @@
             
             const loadingEl = document.getElementById('dashboard-loading');
             const errorEl = document.getElementById('dashboard-error');
-            const studentsSection = document.getElementById('students-section');
+            const statsSection = document.getElementById('stats-section');
             const runsSection = document.getElementById('runs-section');
             const noResultsEl = document.getElementById('no-results');
-            const studentsGrid = document.getElementById('students-grid');
             const runsTbody = document.getElementById('runs-tbody');
             const modal = document.getElementById('detail-modal');
             const closeModalBtn = document.getElementById('close-modal-btn');
@@ -192,27 +224,27 @@
             
             document.addEventListener('DOMContentLoaded', async () => {
                 try {
-                    const [studentsRes, resultsRes] = await Promise.all([
-                        fetch('/api/students'),
+                    const [statsRes, resultsRes] = await Promise.all([
+                        fetch('/api/dashboard-stats'),
                         fetch('/api/results')
                     ]);
                     
-                    const studentsData = await studentsRes.json();
+                    const statsData = await statsRes.json();
                     const resultsData = await resultsRes.json();
                     
-                    if (!studentsRes.ok) throw new Error(studentsData.error || 'فشل في جلب بيانات الطلاب');
+                    if (!statsRes.ok) throw new Error(statsData.error || 'فشل في جلب الإحصائيات');
                     if (!resultsRes.ok) throw new Error(resultsData.error || 'فشل في جلب النتائج');
                     
                     loadingEl.style.display = 'none';
                     allResults = resultsData.results || [];
-                    const students = studentsData.students || [];
+                    const stats = statsData.stats || {};
                     
                     if (allResults.length === 0) {
                         noResultsEl.style.display = 'block';
                         return;
                     }
                     
-                    renderStudents(students);
+                    renderStats(stats);
                     renderRuns(allResults);
                     
                 } catch (error) {
@@ -223,39 +255,100 @@
                 }
             });
             
-            function renderStudents(students) {
-                if (students.length === 0) return;
-                studentsSection.style.display = 'block';
-                studentsGrid.innerHTML = '';
+            function renderStats(stats) {
+                statsSection.style.display = 'block';
                 
-                students.forEach(s => {
-                    const card = document.createElement('div');
-                    card.className = 'student-card';
-                    card.innerHTML = `
-                        <div class="student-card-header">
-                            <h3>${escapeHtml(s.student_name)}</h3>
-                            <span class="grade-badge grade-${s.latest_grade_color || 'default'}">${s.latest_grade || '-'}</span>
-                        </div>
-                        <div class="student-card-body">
-                            <div class="student-metric">
-                                <span class="student-metric-label">عدد المحاولات</span>
-                                <span class="student-metric-value">${s.total_runs || 0}</span>
+                // Big KPI numbers
+                const kpiGrid = document.getElementById('kpi-grid');
+                kpiGrid.innerHTML = `
+                    <div class="kpi-card">
+                        <div class="kpi-big">${stats.total_students || 0}</div>
+                        <div class="kpi-label">عدد الطلاب المقيّمين</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-big">${stats.total_evaluations || 0}</div>
+                        <div class="kpi-label">إجمالي التقييمات</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-big">${stats.mean_score !== null ? stats.mean_score + '%' : '-'}</div>
+                        <div class="kpi-label">متوسط الدرجة</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-big">${stats.best_score !== null ? stats.best_score + '%' : '-'}</div>
+                        <div class="kpi-label">أفضل درجة</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-big">${stats.mean_word_match !== null ? stats.mean_word_match + '%' : '-'}</div>
+                        <div class="kpi-label">متوسط دقة الكلمات</div>
+                    </div>
+                `;
+                
+                // Difficulty breakdown
+                const diffEl = document.getElementById('difficulty-breakdown');
+                const diffLabels = { 'beginner': '🟢 مبتدئ', 'intermediate': '🟡 متوسط', 'advanced': '🔴 متقدم' };
+                diffEl.innerHTML = Object.entries(diffLabels).map(([key, label]) => `
+                    <div class="breakdown-item">
+                        <div class="breakdown-value">${stats.difficulty_breakdown?.[key] || 0}</div>
+                        <div class="breakdown-label">${label}</div>
+                    </div>
+                `).join('');
+                
+                // Length breakdown
+                const lenEl = document.getElementById('length-breakdown');
+                const lenLabels = { 'short': '📄 قصير', 'medium': '📄📄 متوسط', 'long': '📄📄📄 طويل' };
+                lenEl.innerHTML = Object.entries(lenLabels).map(([key, label]) => `
+                    <div class="breakdown-item">
+                        <div class="breakdown-value">${stats.length_breakdown?.[key] || 0}</div>
+                        <div class="breakdown-label">${label}</div>
+                    </div>
+                `).join('');
+                
+                // Grade distribution with bars
+                const gradeEl = document.getElementById('grade-distribution');
+                const gradeMeta = {
+                    'excellent':       { label: 'ممتاز', color: '#10b981' },
+                    'very-good':       { label: 'جيد جداً', color: '#3b82f6' },
+                    'good':            { label: 'جيد', color: '#f59e0b' },
+                    'needs-improvement': { label: 'يحتاج تحسين', color: '#f97316' },
+                    'poor':            { label: 'ضعيف', color: '#ef4444' }
+                };
+                const totalGrades = Object.values(stats.grade_distribution || {}).reduce((a, b) => a + b, 0) || 1;
+                gradeEl.innerHTML = Object.entries(gradeMeta).map(([key, meta]) => {
+                    const count = stats.grade_distribution?.[key] || 0;
+                    const pct = Math.round((count / totalGrades) * 100);
+                    return `
+                        <div class="distribution-row">
+                            <span class="distribution-label">${meta.label}</span>
+                            <div class="distribution-bar">
+                                <div class="distribution-bar-fill" style="width: ${pct}%; background-color: ${meta.color};"></div>
                             </div>
-                            <div class="student-metric">
-                                <span class="student-metric-label">متوسط الدرجة</span>
-                                <span class="student-metric-value score-badge">${s.avg_score !== null ? s.avg_score + '%' : '-'}</span>
-                            </div>
-                            <div class="student-metric">
-                                <span class="student-metric-label">أفضل درجة</span>
-                                <span class="student-metric-value score-badge">${s.best_score !== null ? s.best_score + '%' : '-'}</span>
-                            </div>
-                        </div>
-                        <div class="student-card-footer">
-                            <span class="text-muted">أحدث محاولة: ${s.latest_run ? new Date(s.latest_run).toLocaleDateString('ar-SA') : '-'}</span>
+                            <span class="distribution-count">${count}</span>
                         </div>
                     `;
-                    studentsGrid.appendChild(card);
-                });
+                }).join('');
+                
+                // Pace distribution with bars
+                const paceEl = document.getElementById('pace-distribution');
+                const paceMeta = {
+                    'مثالي': { color: '#10b981' },
+                    'جيد': { color: '#3b82f6' },
+                    'سريع جداً': { color: '#f59e0b' },
+                    'بطيء جداً': { color: '#ef4444' }
+                };
+                const totalPace = Object.values(stats.pace_distribution || {}).reduce((a, b) => a + b, 0) || 1;
+                paceEl.innerHTML = Object.entries(paceMeta).map(([label, meta]) => {
+                    const count = stats.pace_distribution?.[label] || 0;
+                    const pct = Math.round((count / totalPace) * 100);
+                    return `
+                        <div class="distribution-row">
+                            <span class="distribution-label">${label}</span>
+                            <div class="distribution-bar">
+                                <div class="distribution-bar-fill" style="width: ${pct}%; background-color: ${meta.color};"></div>
+                            </div>
+                            <span class="distribution-count">${count}</span>
+                        </div>
+                    `;
+                }).join('');
             }
             
             function renderRuns(results) {

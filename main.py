@@ -703,66 +703,105 @@ async def api_results():
         )
 
 
-@app.get("/api/students")
-async def api_students():
+@app.get("/api/dashboard-stats")
+async def api_dashboard_stats():
     """
-    API endpoint to retrieve aggregated statistics per student.
+    API endpoint to retrieve school-wide aggregated statistics.
+
+    Returns management-level KPIs across all evaluations:
+    - total students, total evaluations, mean/best scores
+    - difficulty and length breakdowns
+    - grade and pace distributions
+    - mean word match accuracy
 
     Returns:
-        JSONResponse: List of student aggregate records
+        JSONResponse: Global stats object
     """
     try:
         conn = sqlite3.connect(str(DB_PATH))
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
+
+        # Top-level aggregates
         cursor.execute("""
             SELECT
-                student_name,
-                COUNT(*) AS total_runs,
-                ROUND(AVG(overall_score), 1) AS avg_score,
+                COUNT(DISTINCT student_name) AS total_students,
+                COUNT(*) AS total_evaluations,
+                ROUND(AVG(overall_score), 1) AS mean_score,
                 ROUND(MAX(overall_score), 1) AS best_score,
-                MAX(created_at) AS latest_run,
-                MIN(created_at) AS first_run
+                ROUND(AVG(word_match_score), 1) AS mean_word_match
             FROM evaluations
-            GROUP BY student_name
-            ORDER BY latest_run DESC
         """)
-        rows = cursor.fetchall()
+        top_row = dict(cursor.fetchone())
 
-        # Get latest grade per student in a second query
+        # Difficulty breakdown
         cursor.execute("""
-            SELECT e.student_name, e.grade, e.grade_color
-            FROM evaluations e
-            INNER JOIN (
-                SELECT student_name, MAX(created_at) AS max_date
-                FROM evaluations
-                GROUP BY student_name
-            ) m ON e.student_name = m.student_name AND e.created_at = m.max_date
+            SELECT difficulty, COUNT(*) AS count
+            FROM evaluations
+            WHERE difficulty IS NOT NULL
+            GROUP BY difficulty
         """)
-        grade_rows = cursor.fetchall()
-        latest_grades = {
-            row["student_name"]: {
-                "grade": row["grade"],
-                "grade_color": row["grade_color"]
-            }
-            for row in grade_rows
+        difficulty_breakdown = {
+            row["difficulty"]: row["count"]
+            for row in cursor.fetchall()
         }
+
+        # Length breakdown
+        cursor.execute("""
+            SELECT length, COUNT(*) AS count
+            FROM evaluations
+            WHERE length IS NOT NULL
+            GROUP BY length
+        """)
+        length_breakdown = {
+            row["length"]: row["count"]
+            for row in cursor.fetchall()
+        }
+
+        # Grade distribution
+        cursor.execute("""
+            SELECT grade_color, COUNT(*) AS count
+            FROM evaluations
+            WHERE grade_color IS NOT NULL
+            GROUP BY grade_color
+        """)
+        grade_distribution = {
+            row["grade_color"]: row["count"]
+            for row in cursor.fetchall()
+        }
+
+        # Pace distribution
+        cursor.execute("""
+            SELECT pace_evaluation, COUNT(*) AS count
+            FROM evaluations
+            WHERE pace_evaluation IS NOT NULL
+            GROUP BY pace_evaluation
+        """)
+        pace_distribution = {
+            row["pace_evaluation"]: row["count"]
+            for row in cursor.fetchall()
+        }
+
         conn.close()
 
-        students = []
-        for row in rows:
-            student = dict(row)
-            lg = latest_grades.get(student["student_name"], {})
-            student["latest_grade"] = lg.get("grade", "-")
-            student["latest_grade_color"] = lg.get("grade_color", "default")
-            students.append(student)
+        stats = {
+            "total_students": top_row["total_students"] or 0,
+            "total_evaluations": top_row["total_evaluations"] or 0,
+            "mean_score": top_row["mean_score"] or 0.0,
+            "best_score": top_row["best_score"] or 0.0,
+            "mean_word_match": top_row["mean_word_match"] or 0.0,
+            "difficulty_breakdown": difficulty_breakdown,
+            "length_breakdown": length_breakdown,
+            "grade_distribution": grade_distribution,
+            "pace_distribution": pace_distribution,
+        }
 
-        return JSONResponse({"students": students})
+        return JSONResponse({"stats": stats})
 
     except Exception as e:
         return JSONResponse(
             status_code=500,
-            content={"error": f"حدث خطأ أثناء جلب بيانات الطلاب: {str(e)}"}
+            content={"error": f"حدث خطأ أثناء جلب الإحصائيات: {str(e)}"}
         )
 
 

@@ -2,7 +2,10 @@
 <!--
     Arabic Reading Evaluation App - Dashboard Template
     
-    This page displays all student evaluation results for decision makers.
+    This page displays:
+    1. Aggregated student metrics (cards)
+    2. A clickable list of all evaluation runs
+    3. A detail modal for each run
 -->
 <html lang="ar" dir="rtl">
 <head>
@@ -25,58 +28,144 @@
     <!-- ==================== MAIN CONTENT ==================== -->
     <main class="main-content">
         <div class="container">
-            <section class="view active">
+            
+            <!-- Loading & Error -->
+            <div id="dashboard-loading" class="dashboard-loading">
+                جاري تحميل البيانات...
+            </div>
+            <div id="dashboard-error" class="error-message" style="display: none;"></div>
+            
+            <!-- ====== SECTION 1: STUDENT AGGREGATES ====== -->
+            <section id="students-section" class="view" style="display: none;">
                 <div class="card">
-                    <h2>📋 سجل التقييمات</h2>
-                    <p class="description">
-                        يعرض الجدول أدناه جميع محاولات التقييم مرتبة حسب الأحدث.
-                    </p>
-                    
-                    <!-- Loading Indicator -->
-                    <div id="dashboard-loading" class="dashboard-loading">
-                        جاري تحميل البيانات...
+                    <h2>👥 ملخص الطلاب</h2>
+                    <p class="description">إحصائيات مجمعة لكل طالب.</p>
+                    <div id="students-grid" class="students-grid">
+                        <!-- Student cards populated by JS -->
                     </div>
-                    
-                    <!-- Error Message -->
-                    <div id="dashboard-error" class="error-message" style="display: none;"></div>
-                    
-                    <!-- Results Table Container -->
-                    <div id="results-container" class="results-container" style="display: none;">
-                        <div class="table-wrapper">
-                            <table class="dashboard-table" id="results-table">
-                                <thead>
-                                    <tr>
-                                        <th>الطالب</th>
-                                        <th>التاريخ</th>
-                                        <th>المستوى</th>
-                                        <th>الدرجة</th>
-                                        <th>التقدير</th>
-                                        <th>دقة الكلمات</th>
-                                        <th>إيقاع القراءة</th>
-                                        <th>التسجيل</th>
-                                        <th>النطق الصحيح</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="results-tbody">
-                                    <!-- Rows populated by JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <!-- No Results Message -->
-                    <div id="no-results" class="no-results" style="display: none;">
-                        <p>لا توجد تقييمات مسجلة حتى الآن.</p>
-                    </div>
-                </div>
-                
-                <!-- Detail Cards Container -->
-                <div id="detail-cards" class="detail-cards">
-                    <!-- Detail cards populated by JavaScript -->
                 </div>
             </section>
+            
+            <!-- ====== SECTION 2: RUNS LIST ====== -->
+            <section id="runs-section" class="view" style="display: none;">
+                <div class="card">
+                    <h2>📋 سجل التقييمات</h2>
+                    <p class="description">اضغط على أي صف لعرض التفاصيل الكاملة.</p>
+                    <div class="table-wrapper">
+                        <table class="dashboard-table runs-list" id="runs-table">
+                            <thead>
+                                <tr>
+                                    <th>الطالب</th>
+                                    <th>التاريخ</th>
+                                    <th>المستوى</th>
+                                    <th>الدرجة</th>
+                                    <th>التقدير</th>
+                                    <th>إيقاع القراءة</th>
+                                </tr>
+                            </thead>
+                            <tbody id="runs-tbody">
+                                <!-- Rows populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- No Results -->
+            <div id="no-results" class="no-results" style="display: none;">
+                <p>لا توجد تقييمات مسجلة حتى الآن.</p>
+            </div>
+            
         </div>
     </main>
+
+    <!-- ==================== DETAIL MODAL ==================== -->
+    <div id="detail-modal" class="detail-modal" style="display: none;">
+        <div class="detail-modal-content">
+            <button id="close-modal-btn" class="close-modal-btn" aria-label="إغلاق">×</button>
+            
+            <div class="detail-header">
+                <h2 id="modal-student-name">اسم الطالب</h2>
+                <span id="modal-date" class="modal-date">-</span>
+            </div>
+            
+            <!-- Score Circle -->
+            <div class="score-card">
+                <div class="score-circle" id="modal-score-circle">
+                    <span id="modal-score-value" class="score-number">0%</span>
+                    <span class="score-label">الدرجة الإجمالية</span>
+                </div>
+                <div id="modal-grade-badge" class="grade-badge">-</div>
+            </div>
+            
+            <!-- Metrics Grid -->
+            <div class="metrics-grid" id="modal-metrics">
+                <div class="metric-card">
+                    <div class="metric-icon">🎯</div>
+                    <div class="metric-content">
+                        <span class="metric-label">دقة الكلمات</span>
+                        <span id="modal-word-match" class="metric-value">-</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">⏱️</div>
+                    <div class="metric-content">
+                        <span class="metric-label">إيقاع القراءة</span>
+                        <span id="modal-pace-eval" class="metric-value">-</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">📊</div>
+                    <div class="metric-content">
+                        <span class="metric-label">درجة الإيقاع</span>
+                        <span id="modal-pace-score" class="metric-value">-</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-icon">📝</div>
+                    <div class="metric-content">
+                        <span class="metric-label">المستوى / الطول</span>
+                        <span id="modal-level" class="metric-value">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Texts Comparison -->
+            <div class="comparison-container" id="modal-texts">
+                <div class="comparison-box">
+                    <h3>النص الأصلي:</h3>
+                    <div id="modal-original-text" class="text-box comparison-text">-</div>
+                </div>
+                <div class="comparison-box">
+                    <h3>النص المستخرج من التسجيل:</h3>
+                    <div id="modal-transcribed-text" class="text-box comparison-text">-</div>
+                </div>
+            </div>
+            
+            <!-- Audio Players -->
+            <div class="modal-audio-section">
+                <h3>🔊 الملفات الصوتية</h3>
+                <div class="audio-grid">
+                    <div class="audio-box">
+                        <h4>تسجيل الطالب:</h4>
+                        <div id="modal-recording-player">
+                            <span class="text-muted">غير متوفر</span>
+                        </div>
+                    </div>
+                    <div class="audio-box">
+                        <h4>النطق الصحيح:</h4>
+                        <div id="modal-tts-player">
+                            <span class="text-muted">غير متوفر</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button id="modal-back-btn" class="btn btn-secondary">← العودة للقائمة</button>
+            </div>
+        </div>
+    </div>
 
     <!-- ==================== FOOTER ==================== -->
     <footer class="app-footer">
@@ -87,46 +176,99 @@
 
     <!-- ==================== JAVASCRIPT ==================== -->
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
+        (function() {
+            let allResults = [];
+            
             const loadingEl = document.getElementById('dashboard-loading');
             const errorEl = document.getElementById('dashboard-error');
-            const containerEl = document.getElementById('results-container');
+            const studentsSection = document.getElementById('students-section');
+            const runsSection = document.getElementById('runs-section');
             const noResultsEl = document.getElementById('no-results');
-            const tbodyEl = document.getElementById('results-tbody');
-            const detailCardsEl = document.getElementById('detail-cards');
+            const studentsGrid = document.getElementById('students-grid');
+            const runsTbody = document.getElementById('runs-tbody');
+            const modal = document.getElementById('detail-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const modalBackBtn = document.getElementById('modal-back-btn');
             
-            try {
-                const response = await fetch('/api/results');
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.error || 'فشل في جلب النتائج');
+            document.addEventListener('DOMContentLoaded', async () => {
+                try {
+                    const [studentsRes, resultsRes] = await Promise.all([
+                        fetch('/api/students'),
+                        fetch('/api/results')
+                    ]);
+                    
+                    const studentsData = await studentsRes.json();
+                    const resultsData = await resultsRes.json();
+                    
+                    if (!studentsRes.ok) throw new Error(studentsData.error || 'فشل في جلب بيانات الطلاب');
+                    if (!resultsRes.ok) throw new Error(resultsData.error || 'فشل في جلب النتائج');
+                    
+                    loadingEl.style.display = 'none';
+                    allResults = resultsData.results || [];
+                    const students = studentsData.students || [];
+                    
+                    if (allResults.length === 0) {
+                        noResultsEl.style.display = 'block';
+                        return;
+                    }
+                    
+                    renderStudents(students);
+                    renderRuns(allResults);
+                    
+                } catch (error) {
+                    loadingEl.style.display = 'none';
+                    errorEl.textContent = error.message;
+                    errorEl.style.display = 'block';
+                    console.error('Dashboard error:', error);
                 }
+            });
+            
+            function renderStudents(students) {
+                if (students.length === 0) return;
+                studentsSection.style.display = 'block';
+                studentsGrid.innerHTML = '';
                 
-                loadingEl.style.display = 'none';
+                students.forEach(s => {
+                    const card = document.createElement('div');
+                    card.className = 'student-card';
+                    card.innerHTML = `
+                        <div class="student-card-header">
+                            <h3>${escapeHtml(s.student_name)}</h3>
+                            <span class="grade-badge grade-${s.latest_grade_color || 'default'}">${s.latest_grade || '-'}</span>
+                        </div>
+                        <div class="student-card-body">
+                            <div class="student-metric">
+                                <span class="student-metric-label">عدد المحاولات</span>
+                                <span class="student-metric-value">${s.total_runs || 0}</span>
+                            </div>
+                            <div class="student-metric">
+                                <span class="student-metric-label">متوسط الدرجة</span>
+                                <span class="student-metric-value score-badge">${s.avg_score !== null ? s.avg_score + '%' : '-'}</span>
+                            </div>
+                            <div class="student-metric">
+                                <span class="student-metric-label">أفضل درجة</span>
+                                <span class="student-metric-value score-badge">${s.best_score !== null ? s.best_score + '%' : '-'}</span>
+                            </div>
+                        </div>
+                        <div class="student-card-footer">
+                            <span class="text-muted">أحدث محاولة: ${s.latest_run ? new Date(s.latest_run).toLocaleDateString('ar-SA') : '-'}</span>
+                        </div>
+                    `;
+                    studentsGrid.appendChild(card);
+                });
+            }
+            
+            function renderRuns(results) {
+                runsSection.style.display = 'block';
+                runsTbody.innerHTML = '';
                 
-                if (!data.results || data.results.length === 0) {
-                    noResultsEl.style.display = 'block';
-                    return;
-                }
-                
-                containerEl.style.display = 'block';
-                
-                // Render table rows
-                data.results.forEach(result => {
+                results.forEach(result => {
                     const row = document.createElement('tr');
+                    row.dataset.runId = result.id;
                     
                     const dateStr = result.created_at
                         ? new Date(result.created_at).toLocaleString('ar-SA')
                         : '-';
-                    
-                    const recordingCell = result.recording_file_path
-                        ? `<audio controls src="${result.recording_file_path}"></audio>`
-                        : '<span class="text-muted">غير متوفر</span>';
-                    
-                    const ttsCell = result.tts_file_path
-                        ? `<audio controls src="${result.tts_file_path}"></audio>`
-                        : '<span class="text-muted">غير متوفر</span>';
                     
                     row.innerHTML = `
                         <td><strong>${escapeHtml(result.student_name || '-')}</strong></td>
@@ -134,65 +276,102 @@
                         <td>${formatLevel(result.difficulty)} / ${formatLength(result.length)}</td>
                         <td><span class="score-badge">${result.overall_score !== null ? result.overall_score + '%' : '-'}</span></td>
                         <td><span class="grade-text grade-${result.grade_color || 'default'}">${result.grade || '-'}</span></td>
-                        <td>${result.word_match_score !== null ? result.word_match_score + '%' : '-'}</td>
                         <td>${result.pace_evaluation || '-'}</td>
-                        <td class="audio-cell">${recordingCell}</td>
-                        <td class="audio-cell">${ttsCell}</td>
                     `;
                     
-                    tbodyEl.appendChild(row);
-                    
-                    // Create detail card for texts
-                    const card = document.createElement('div');
-                    card.className = 'card detail-card';
-                    card.innerHTML = `
-                        <h3>📝 تقييم ${escapeHtml(result.student_name || '-')} - ${dateStr}</h3>
-                        <div class="detail-texts">
-                            <div class="detail-box">
-                                <h4>النص الأصلي:</h4>
-                                <p>${escapeHtml(result.generated_text || '-')}</p>
-                            </div>
-                            <div class="detail-box">
-                                <h4>النص المستخرج من التسجيل:</h4>
-                                <p>${escapeHtml(result.transcribed_text || '-')}</p>
-                            </div>
-                        </div>
-                    `;
-                    detailCardsEl.appendChild(card);
+                    row.addEventListener('click', () => openDetail(result.id));
+                    runsTbody.appendChild(row);
                 });
-                
-            } catch (error) {
-                loadingEl.style.display = 'none';
-                errorEl.textContent = error.message;
-                errorEl.style.display = 'block';
-                console.error('Error loading dashboard:', error);
             }
-        });
-        
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        function formatLevel(difficulty) {
-            const levels = {
-                'beginner': 'مبتدئ',
-                'intermediate': 'متوسط',
-                'advanced': 'متقدم'
-            };
-            return levels[difficulty] || difficulty || '-';
-        }
-        
-        function formatLength(length) {
-            const lengths = {
-                'short': 'قصير',
-                'medium': 'متوسط',
-                'long': 'طويل'
-            };
-            return lengths[length] || length || '-';
-        }
+            
+            function openDetail(runId) {
+                const result = allResults.find(r => r.id == runId);
+                if (!result) return;
+                
+                const dateStr = result.created_at
+                    ? new Date(result.created_at).toLocaleString('ar-SA')
+                    : '-';
+                
+                document.getElementById('modal-student-name').textContent = escapeHtml(result.student_name || '-');
+                document.getElementById('modal-date').textContent = dateStr;
+                
+                // Score
+                const scoreVal = result.overall_score !== null ? Math.round(result.overall_score) : 0;
+                document.getElementById('modal-score-value').textContent = scoreVal + '%';
+                const scoreCircle = document.getElementById('modal-score-circle');
+                scoreCircle.classList.remove('low-score', 'medium-score');
+                if (scoreVal < 50) scoreCircle.classList.add('low-score');
+                else if (scoreVal < 80) scoreCircle.classList.add('medium-score');
+                
+                // Grade
+                const gradeBadge = document.getElementById('modal-grade-badge');
+                gradeBadge.textContent = result.grade || '-';
+                gradeBadge.className = `grade-badge ${result.grade_color || 'default'}`;
+                
+                // Metrics
+                document.getElementById('modal-word-match').textContent = result.word_match_score !== null ? result.word_match_score + '%' : '-';
+                document.getElementById('modal-pace-eval').textContent = result.pace_evaluation || '-';
+                document.getElementById('modal-pace-score').textContent = result.pace_score !== null ? result.pace_score + '%' : '-';
+                document.getElementById('modal-level').textContent = `${formatLevel(result.difficulty)} / ${formatLength(result.length)}`;
+                
+                // Texts
+                document.getElementById('modal-original-text').textContent = result.generated_text || '-';
+                document.getElementById('modal-transcribed-text').textContent = result.transcribed_text || '-';
+                
+                // Audio
+                const recordingPlayer = document.getElementById('modal-recording-player');
+                if (result.recording_file_path) {
+                    recordingPlayer.innerHTML = `<audio controls src="${escapeHtml(result.recording_file_path)}"></audio>`;
+                } else {
+                    recordingPlayer.innerHTML = '<span class="text-muted">غير متوفر</span>';
+                }
+                
+                const ttsPlayer = document.getElementById('modal-tts-player');
+                if (result.tts_file_path) {
+                    ttsPlayer.innerHTML = `<audio controls src="${escapeHtml(result.tts_file_path)}"></audio>`;
+                } else {
+                    ttsPlayer.innerHTML = '<span class="text-muted">غير متوفر</span>';
+                }
+                
+                modal.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            }
+            
+            function closeDetail() {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+            
+            closeModalBtn.addEventListener('click', closeDetail);
+            modalBackBtn.addEventListener('click', closeDetail);
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeDetail();
+            });
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && modal.style.display === 'flex') {
+                    closeDetail();
+                }
+            });
+            
+            function escapeHtml(text) {
+                if (!text) return '';
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            function formatLevel(difficulty) {
+                const levels = { 'beginner': 'مبتدئ', 'intermediate': 'متوسط', 'advanced': 'متقدم' };
+                return levels[difficulty] || difficulty || '-';
+            }
+            
+            function formatLength(length) {
+                const lengths = { 'short': 'قصير', 'medium': 'متوسط', 'long': 'طويل' };
+                return lengths[length] || length || '-';
+            }
+        })();
     </script>
 </body>
 </html>

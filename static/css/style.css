@@ -1260,3 +1260,239 @@ input, select, textarea {
         align-items: flex-start;
     }
 }
+
+/* =============================================================================
+   DASHBOARD REDESIGN - STUDENT CARDS & MODAL
+   ========================================================================== */
+
+/* Student Summary Grid */
+.students-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-lg);
+}
+
+.student-card {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-md);
+    border: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.student-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.student-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-sm);
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: var(--spacing-sm);
+}
+
+.student-card-header h3 {
+    font-size: var(--font-size-xl);
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.student-card-body {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+    text-align: center;
+}
+
+.student-metric {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.student-metric-label {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.student-metric-value {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.student-card-footer {
+    font-size: var(--font-size-sm);
+    color: var(--text-light);
+    text-align: center;
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid #f3f4f6;
+}
+
+/* Runs List - Clickable Rows */
+.runs-list tbody tr {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.runs-list tbody tr:hover {
+    background-color: #eff6ff;
+}
+
+.runs-list tbody tr:active {
+    background-color: #dbeafe;
+}
+
+/* Detail Modal Overlay */
+.detail-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--spacing-xl);
+    overflow-y: auto;
+    backdrop-filter: blur(4px);
+}
+
+.detail-modal-content {
+    background-color: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    width: 100%;
+    max-width: 800px;
+    margin-top: var(--spacing-xl);
+    margin-bottom: var(--spacing-xl);
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    animation: modalSlideIn 0.25s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.close-modal-btn {
+    position: absolute;
+    top: var(--spacing-md);
+    left: var(--spacing-md);
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    background-color: #f3f4f6;
+    color: var(--text-secondary);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.close-modal-btn:hover {
+    background-color: #fee2e2;
+    color: var(--danger-color);
+}
+
+.detail-header {
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.detail-header h2 {
+    font-size: var(--font-size-2xl);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.modal-date {
+    color: var(--text-secondary);
+    font-size: var(--font-size-base);
+}
+
+/* Modal Audio Section */
+.modal-audio-section {
+    margin-top: var(--spacing-xl);
+    padding: var(--spacing-lg);
+    background: linear-gradient(135deg, #f9fafb, #f3f4f6);
+    border-radius: var(--radius-md);
+    border: 1px solid #e5e7eb;
+}
+
+.modal-audio-section h3 {
+    font-size: var(--font-size-lg);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.audio-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+}
+
+@media (min-width: 768px) {
+    .audio-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+.audio-box h4 {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.audio-box audio {
+    width: 100%;
+    max-width: 100%;
+}
+
+.modal-actions {
+    margin-top: var(--spacing-xl);
+    text-align: center;
+}
+
+/* Responsive Student Cards */
+@media (max-width: 640px) {
+    .students-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .student-card-body {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .detail-modal {
+        padding: var(--spacing-md);
+    }
+    
+    .detail-modal-content {
+        padding: var(--spacing-lg);
+        margin-top: var(--spacing-md);
+    }
+    
+    .close-modal-btn {
+        top: var(--spacing-sm);
+        left: var(--spacing-sm);
+    }
+}

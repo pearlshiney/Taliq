@@ -703,6 +703,69 @@ async def api_results():
         )
 
 
+@app.get("/api/students")
+async def api_students():
+    """
+    API endpoint to retrieve aggregated statistics per student.
+
+    Returns:
+        JSONResponse: List of student aggregate records
+    """
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT
+                student_name,
+                COUNT(*) AS total_runs,
+                ROUND(AVG(overall_score), 1) AS avg_score,
+                ROUND(MAX(overall_score), 1) AS best_score,
+                MAX(created_at) AS latest_run,
+                MIN(created_at) AS first_run
+            FROM evaluations
+            GROUP BY student_name
+            ORDER BY latest_run DESC
+        """)
+        rows = cursor.fetchall()
+
+        # Get latest grade per student in a second query
+        cursor.execute("""
+            SELECT e.student_name, e.grade, e.grade_color
+            FROM evaluations e
+            INNER JOIN (
+                SELECT student_name, MAX(created_at) AS max_date
+                FROM evaluations
+                GROUP BY student_name
+            ) m ON e.student_name = m.student_name AND e.created_at = m.max_date
+        """)
+        grade_rows = cursor.fetchall()
+        latest_grades = {
+            row["student_name"]: {
+                "grade": row["grade"],
+                "grade_color": row["grade_color"]
+            }
+            for row in grade_rows
+        }
+        conn.close()
+
+        students = []
+        for row in rows:
+            student = dict(row)
+            lg = latest_grades.get(student["student_name"], {})
+            student["latest_grade"] = lg.get("grade", "-")
+            student["latest_grade_color"] = lg.get("grade_color", "default")
+            students.append(student)
+
+        return JSONResponse({"students": students})
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"حدث خطأ أثناء جلب بيانات الطلاب: {str(e)}"}
+        )
+
+
 # =============================================================================
 # HEALTH CHECK ENDPOINT
 # =============================================================================

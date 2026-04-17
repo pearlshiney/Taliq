@@ -408,6 +408,7 @@
                 formData.append('student_id', currentAssignmentStudentId);
                 formData.append('difficulty', document.getElementById('assign-difficulty').value);
                 formData.append('length', document.getElementById('assign-length').value);
+                formData.append('generated_text', document.getElementById('generated-text-preview').textContent);
                 
                 const res = await fetch('/api/assignments', { method: 'POST', body: formData });
                 const data = await res.json();

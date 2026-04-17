@@ -417,11 +417,12 @@ async def api_list_assignments():
 async def api_create_assignment(
     student_id: int = Form(...),
     difficulty: str = Form(...),
-    length: str = Form(...)
+    length: str = Form(...),
+    generated_text: str = Form(...)
 ):
     """Create a new assignment by generating text via LLM."""
     try:
-        generated_text = ask_nuha(difficulty, length)
+        # generated_text = ask_nuha(difficulty, length)
 
         conn = sqlite3.connect(str(DB_PATH))
         cursor = conn.cursor()

@@ -1,27 +1,30 @@
-# Arabic Reading Evaluation App - Agent Documentation
+# طَلِقْ (Taliq) - Arabic Reading Evaluation App - Agent Documentation
 
 ## Project Overview
 
-This is a **FastAPI-based web application** for evaluating Arabic reading skills using AI. The application provides a complete workflow for:
+This is a **FastAPI-based web application** named **طَلِقْ (Taliq)** for evaluating Arabic reading skills using AI. The application provides:
 
-1. **Generating Arabic text** using the Nuha-2.0 LLM model
-2. **Recording user reading** via browser microphone
+1. **Admin Control Panel** (`/control-panel`) for registering students, assigning pre-generated paragraphs, and customizing evaluation parameters
+2. **Simplified Student Flow** — students select their name, see their assigned text, record, and get evaluated
 3. **Evaluating pronunciation** using Elm-ASR for transcription and comparison
 4. **Playing correct pronunciation** using Elm-TTS text-to-speech
-5. **Tracking student progress** with per-student evaluation history
-6. **Reviewing results** via a decision-maker dashboard
+5. **LLM-based tashkeel removal** before TTS generation and text comparison
+6. **Reviewing results** via a decision-maker dashboard (`/dashboard`)
+7. **Admin settings** for customizing scoring thresholds, reading speed parameters, and grade boundaries
 
 The app is designed as a **Single Page Application (SPA)** with an RTL (Right-to-Left) Arabic interface.
 
 ### Key Features
-- Three-step wizard: Text Generation → Recording → Evaluation
+- **Control Panel** for student registration, assignment generation, and admin settings
+- **Simplified student flow**: Select Name → Record → Evaluate
 - Real-time audio recording using Web Audio API
-- AI-powered text comparison and scoring
-- Text-to-speech for correct pronunciation reference
-- Student name capture for each evaluation run
-- Persistent SQLite database storing all evaluation results, generated texts, and transcriptions
+- AI-powered text comparison and scoring with configurable parameters
+- Text-to-speech for correct pronunciation reference (with automatic tashkeel removal)
+- LLM-based tashkeel removal from transcribed text before evaluation
+- Persistent SQLite database with `students`, `assignments`, `evaluations`, and `settings` tables
 - Persistent file storage for all recordings and generated TTS audio
-- Decision-maker dashboard (`/dashboard`) to view all student results with playback
+- Decision-maker dashboard (`/dashboard`) with school-wide aggregated KPIs
+- Admin settings page for customizing evaluation thresholds and weights
 - Mobile-responsive design
 
 ---
@@ -56,8 +59,9 @@ The app is designed as a **Single Page Application (SPA)** with an RTL (Right-to
 ├── AGENTS.md           # This file
 │
 ├── templates/          # Jinja2 HTML templates
-│   ├── index.html      # Main SPA template (Arabic RTL)
-│   └── dashboard.html  # Decision-maker dashboard
+│   ├── index.html      # Main student app (Arabic RTL)
+│   ├── dashboard.html  # Decision-maker dashboard
+│   └── control_panel.html  # Admin control panel
 │
 ├── static/             # Static assets
 │   ├── css/
@@ -82,17 +86,22 @@ The FastAPI application provides these endpoints:
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Serve the main HTML page |
-| `/dashboard` | GET | Decision-maker dashboard showing all results |
+| `/` | GET | Main student app |
+| `/dashboard` | GET | Decision-maker dashboard |
+| `/control-panel` | GET | Admin control panel |
 | `/api/generate-text` | POST | Generate Arabic text using Nuha LLM |
-| `/api/transcribe` | POST | Transcribe audio using Elm-ASR and persist the file |
-| `/api/evaluate` | POST | Evaluate reading and save result to SQLite |
-| `/api/generate-speech` | POST | Generate TTS audio and optionally link to evaluation |
-| `/api/results` | GET | Retrieve all evaluation records from the database |
+| `/api/transcribe` | POST | Transcribe audio using Elm-ASR + remove tashkeel |
+| `/api/evaluate` | POST | Evaluate reading (reads assignment from DB) |
+| `/api/generate-speech` | POST | Generate TTS audio (removes tashkeel first) |
+| `/api/students` | GET, POST | List / create students |
+| `/api/students/{id}` | PUT, DELETE | Update / delete student |
+| `/api/assignments` | GET, POST | List / create assignments |
+| `/api/assignments/{id}` | DELETE | Delete assignment |
+| `/api/student-assignments/{id}` | GET | Get current assignment for a student |
+| `/api/settings` | GET, POST | Read / update admin settings |
+| `/api/results` | GET | Retrieve all evaluation records |
+| `/api/dashboard-stats` | GET | School-wide aggregated statistics |
 | `/api/health` | GET | Health check endpoint |
-| `/static/*` | GET | Static files (CSS, JS) |
-| `/speeches/*` | GET | Generated audio files |
-| `/recordings/*` | GET | Saved student audio recordings |
 
 **Input Validation:**
 - `difficulty`: `"beginner"`, `"intermediate"`, or `"advanced"`
@@ -100,7 +109,7 @@ The FastAPI application provides these endpoints:
 
 ### AI Client (`ai_client.py`)
 
-Wrapper module for Elmodels API with three main functions:
+Wrapper module for Elmodels API:
 
 ```python
 ask_nuha(difficulty: str, length: str) -> str
@@ -111,25 +120,28 @@ generate_speech_file(text: str, output_path: str) -> str
 
 transcribe_audio(audio_file_path: str) -> str
     # Transcribe audio to text using Elm-ASR
+
+remove_tashkeel(text: str) -> str
+    # Remove Arabic diacritics using Nuha-2.0 LLM
 ```
 
 ### Frontend (`static/js/app.js`)
 
 Single Page Application with three views:
 
-1. **View 1 - Text Generator** (`#view-1`)
-   - Form to select difficulty and length
-   - Calls `/api/generate-text`
-   - Displays generated text
+1. **View 1 - Student Selector** (`#view-1`)
+   - Dropdown to select student name (fetched from `/api/students`)
+   - Fetches assigned paragraph via `/api/student-assignments/{id}`
+   - Shows assigned text, difficulty, and length
 
 2. **View 2 - Reading Recorder** (`#view-2`)
-   - Displays the text to read
+   - Displays the pre-assigned text to read
    - Records audio using MediaRecorder API
    - Submits audio for transcription
 
 3. **View 3 - Evaluation** (`#view-3`)
-   - Shows similarity score (0-100%)
-   - Compares original vs transcribed text
+   - Shows similarity score (0-100%) with word-level diff highlighting
+   - Compares original vs transcribed text (green=match, gray=missing, red=extra)
    - Lists specific mistakes
    - Plays TTS for correct pronunciation
 
@@ -144,9 +156,8 @@ Single Page Application with three views:
     ttsAudioUrl: null,
     recordingDuration: 0,
     evaluation: null,
+    assignmentId: null,
     studentName: '',
-    difficulty: '',
-    length: '',
     recordingUrl: null,
     evaluationId: null
 }
@@ -293,10 +304,15 @@ tests/
 
 ### Manual Testing Checklist
 
-1. **Text Generation**
-   - Test all difficulty levels (beginner, intermediate, advanced)
-   - Test all length options (short, medium, long)
-   - Verify Arabic text is generated correctly
+1. **Control Panel**
+   - Add, edit, and delete students
+   - Generate and assign paragraphs to students
+   - Customize evaluation settings (speed, weights, thresholds)
+
+2. **Student Flow**
+   - Select name from dropdown
+   - View assigned paragraph
+   - Record reading and submit for evaluation
 
 2. **Audio Recording**
    - Test microphone permission handling
@@ -349,7 +365,7 @@ tests/
 - Generated audio files are served statically
 
 ### Scaling Considerations
-- Application state is stored in the local SQLite database (`evaluations.db`) and on disk (`recordings/`, `speeches/`)
+- Application state is stored in the local SQLite database (`evaluations.db`) with four tables: `students`, `assignments`, `evaluations`, `settings`
 - For horizontal scaling, move SQLite to a shared database (PostgreSQL/MySQL) and use cloud storage (S3, etc.) for audio files
 
 ---

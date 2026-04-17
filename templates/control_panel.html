@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<!--
+    طَلِقْ - Control Panel
+    
+    Admin interface for:
+    1. Student management (CRUD)
+    2. Assignment generation (pre-generate paragraphs)
+    3. Admin settings (evaluation parameters)
+-->
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>طَلِقْ - لوحة التحكم</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- ==================== NAVIGATION MENU ==================== -->
+    <nav class="nav-menu">
+        <div class="container nav-container">
+            <a href="/" class="nav-brand">📚 طَلِقْ</a>
+            <div class="nav-links">
+                <a href="/" class="nav-link">🏠 التطبيق</a>
+                <a href="/dashboard" class="nav-link">📊 لوحة النتائج</a>
+                <a href="/control-panel" class="nav-link active">⚙️ لوحة التحكم</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ==================== HEADER ==================== -->
+    <header class="app-header">
+        <div class="container">
+            <h1>⚙️ لوحة التحكم</h1>
+            <p class="subtitle">إدارة الطلاب، التكليفات، وإعدادات التقييم</p>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="main-content">
+        <div class="container">
+            
+            <!-- Tabs -->
+            <div class="control-panel-tabs">
+                <button class="tab-btn active" data-tab="students-tab">👥 إدارة الطلاب</button>
+                <button class="tab-btn" data-tab="settings-tab">🔧 إعدادات التقييم</button>
+            </div>
+            
+            <!-- Loading & Error -->
+            <div id="cp-loading" class="dashboard-loading">
+                جاري تحميل البيانات...
+            </div>
+            <div id="cp-error" class="error-message" style="display: none;"></div>
+            
+            <!-- ====== TAB 1: STUDENT MANAGEMENT ====== -->
+            <div id="students-tab" class="tab-content active">
+                
+                <!-- Add Student Form -->
+                <div class="card">
+                    <h2>➕ إضافة طالب جديد</h2>
+                    <form id="add-student-form" class="form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="student-id-number">رقم الطالب:</label>
+                                <input type="text" id="student-id-number" name="student_id_number" placeholder="مثال: 2024001" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="student-name">الاسم:</label>
+                                <input type="text" id="student-name" name="name" placeholder="اسم الطالب الكامل" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <span class="btn-text">إضافة طالب</span>
+                            <span class="btn-loading" style="display: none;">جاري الإضافة...</span>
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Students List -->
+                <div class="card">
+                    <h2>📋 قائمة الطلاب</h2>
+                    <div class="table-wrapper">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>رقم الطالب</th>
+                                    <th>الاسم</th>
+                                    <th>التكليف الحالي</th>
+                                    <th>الإجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="students-tbody">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <!-- ====== TAB 2: ADMIN SETTINGS ====== -->
+            <div id="settings-tab" class="tab-content">
+                <div class="card">
+                    <h2>🔧 إعدادات التقييم</h2>
+                    <p class="description">
+                        يمكنك تعديل معايير حساب درجات التقييم هنا. القيم الافتراضية تطابق المنطق الحالي.
+                    </p>
+                    
+                    <form id="settings-form" class="settings-form">
+                        <h3>📖 سرعة القراءة</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="words_per_minute_normal">السرعة الطبيعية (كلمة/دقيقة):</label>
+                                <input type="number" id="words_per_minute_normal" name="words_per_minute_normal" step="1" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="ratio_ideal_min">نسبة الإيقاع المثالي (أدنى):</label>
+                                <input type="number" id="ratio_ideal_min" name="ratio_ideal_min" step="0.1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ratio_ideal_max">نسبة الإيقاع المثالي (أقصى):</label>
+                                <input type="number" id="ratio_ideal_max" name="ratio_ideal_max" step="0.1" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="ratio_fast_min">نسبة السرعة الزائدة:</label>
+                                <input type="number" id="ratio_fast_min" name="ratio_fast_min" step="0.1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ratio_slow_max">نسبة البطء الزائد:</label>
+                                <input type="number" id="ratio_slow_max" name="ratio_slow_max" step="0.1" required>
+                            </div>
+                        </div>
+                        
+                        <h3>⚖️ أوزان الدرجات</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="word_match_weight">وزن دقة الكلمات (0–1):</label>
+                                <input type="number" id="word_match_weight" name="word_match_weight" step="0.1" min="0" max="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="pace_weight">وزن إيقاع القراءة (0–1):</label>
+                                <input type="number" id="pace_weight" name="pace_weight" step="0.1" min="0" max="1" required>
+                            </div>
+                        </div>
+                        
+                        <h3>🎓 عتبات التقدير</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="score_excellent">ممتاز (≥):</label>
+                                <input type="number" id="score_excellent" name="score_excellent" step="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="score_very_good">جيد جداً (≥):</label>
+                                <input type="number" id="score_very_good" name="score_very_good" step="1" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="score_good">جيد (≥):</label>
+                                <input type="number" id="score_good" name="score_good" step="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="score_needs_improvement">يحتاج تحسين (≥):</label>
+                                <input type="number" id="score_needs_improvement" name="score_needs_improvement" step="1" required>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <span class="btn-text">💾 حفظ الإعدادات</span>
+                            <span class="btn-loading" style="display: none;">جاري الحفظ...</span>
+                        </button>
+                    </form>
+                    
+                    <div id="settings-success" class="success-message" style="display: none;">
+                        ✅ تم حفظ الإعدادات بنجاح!
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
+    <!-- ==================== ASSIGNMENT MODAL ==================== -->
+    <div id="assignment-modal" class="detail-modal" style="display: none;">
+        <div class="detail-modal-content" style="max-width: 600px;">
+            <button id="close-assignment-modal" class="close-modal-btn" aria-label="إغلاق">×</button>
+            <h2>📝 تعيين نص للطالب</h2>
+            <p id="assign-student-name" class="description"></p>
+            
+            <form id="assignment-form" class="form">
+                <input type="hidden" id="assign-student-id" name="student_id">
+                <div class="form-group">
+                    <label for="assign-difficulty">مستوى الصعوبة:</label>
+                    <select id="assign-difficulty" name="difficulty" required>
+                        <option value="beginner">🟢 مبتدئ</option>
+                        <option value="intermediate">🟡 متوسط</option>
+                        <option value="advanced">🔴 متقدم</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="assign-length">طول النص:</label>
+                    <select id="assign-length" name="length" required>
+                        <option value="short">📄 قصير</option>
+                        <option value="medium">📄📄 متوسط</option>
+                        <option value="long">📄📄📄 طويل</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-text">✨ توليد النص</span>
+                    <span class="btn-loading" style="display: none;">جاري التوليد...</span>
+                </button>
+            </form>
+            
+            <div id="generated-preview" class="generated-preview" style="display: none;">
+                <h3>النص المُولّد:</h3>
+                <div id="generated-text-preview" class="text-display"></div>
+                <div class="modal-actions">
+                    <button id="save-assignment-btn" class="btn btn-success">✅ حفظ التكليف</button>
+                    <button id="cancel-assignment-btn" class="btn btn-secondary">❌ إلغاء</button>
+                </div>
+            </div>
+            
+            <div id="assignment-error" class="error-message" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="app-footer">
+        <div class="container">
+            <p>طَلِقْ - تطبيق تقييم مهارات القراءة باللغة العربية © 2026</p>
+        </div>
+    </footer>
+
+    <script>
+    (function() {
+        // Tab switching
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        const loadingEl = document.getElementById('cp-loading');
+        const errorEl = document.getElementById('cp-error');
+        const studentsTbody = document.getElementById('students-tbody');
+        const assignmentModal = document.getElementById('assignment-modal');
+        let currentGeneratedText = '';
+        let currentAssignmentStudentId = null;
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const [studentsRes, settingsRes] = await Promise.all([
+                    fetch('/api/students'),
+                    fetch('/api/settings')
+                ]);
+                const studentsData = await studentsRes.json();
+                const settingsData = await settingsRes.json();
+                
+                if (!studentsRes.ok) throw new Error(studentsData.error || 'فشل في جلب الطلاب');
+                if (!settingsRes.ok) throw new Error(settingsData.error || 'فشل في جلب الإعدادات');
+                
+                loadingEl.style.display = 'none';
+                renderStudents(studentsData.students || []);
+                populateSettings(settingsData.settings || {});
+            } catch (error) {
+                loadingEl.style.display = 'none';
+                errorEl.textContent = error.message;
+                errorEl.style.display = 'block';
+                console.error('Control panel error:', error);
+            }
+        });
+
+        // Render students table
+        function renderStudents(students) {
+            studentsTbody.innerHTML = '';
+            if (students.length === 0) {
+                studentsTbody.innerHTML = '<tr><td colspan="4" class="text-muted" style="text-align:center;">لا يوجد طلاب مسجلين</td></tr>';
+                return;
+            }
+            students.forEach(s => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${escapeHtml(s.student_id_number)}</td>
+                    <td><strong>${escapeHtml(s.name)}</strong></td>
+                    <td><span class="text-muted">-</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="openAssignmentModal(${s.id}, '${escapeHtml(s.name)}')">📝 تعيين نص</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteStudent(${s.id})">🗑️ حذف</button>
+                    </td>
+                `;
+                studentsTbody.appendChild(row);
+            });
+        }
+
+        // Add student
+        document.getElementById('add-student-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const btnLoading = submitBtn.querySelector('.btn-loading');
+            
+            submitBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+            
+            try {
+                const formData = new FormData(form);
+                const res = await fetch('/api/students', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'فشل في الإضافة');
+                
+                form.reset();
+                // Refresh students list
+                const studentsRes = await fetch('/api/students');
+                const studentsData = await studentsRes.json();
+                renderStudents(studentsData.students || []);
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                submitBtn.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+            }
+        });
+
+        // Delete student
+        window.deleteStudent = async function(studentId) {
+            if (!confirm('هل أنت متأكد من حذف هذا الطالب؟')) return;
+            try {
+                const res = await fetch(`/api/students/${studentId}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'فشل في الحذف');
+                
+                const studentsRes = await fetch('/api/students');
+                const studentsData = await studentsRes.json();
+                renderStudents(studentsData.students || []);
+            } catch (error) {
+                alert(error.message);
+            }
+        };
+
+        // Open assignment modal
+        window.openAssignmentModal = function(studentId, studentName) {
+            currentAssignmentStudentId = studentId;
+            document.getElementById('assign-student-id').value = studentId;
+            document.getElementById('assign-student-name').textContent = `طالب: ${studentName}`;
+            document.getElementById('generated-preview').style.display = 'none';
+            document.getElementById('assignment-error').style.display = 'none';
+            assignmentModal.style.display = 'flex';
+        };
+
+        // Close assignment modal
+        document.getElementById('close-assignment-modal').addEventListener('click', () => {
+            assignmentModal.style.display = 'none';
+        });
+        document.getElementById('cancel-assignment-btn').addEventListener('click', () => {
+            assignmentModal.style.display = 'none';
+        });
+        assignmentModal.addEventListener('click', (e) => {
+            if (e.target === assignmentModal) assignmentModal.style.display = 'none';
+        });
+
+        // Generate assignment text
+        document.getElementById('assignment-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const btnLoading = submitBtn.querySelector('.btn-loading');
+            
+            submitBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+            
+            try {
+                const formData = new FormData(form);
+                const res = await fetch('/api/generate-text', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'فشل في توليد النص');
+                
+                currentGeneratedText = data.text;
+                document.getElementById('generated-text-preview').textContent = data.text;
+                document.getElementById('generated-preview').style.display = 'block';
+            } catch (error) {
+                document.getElementById('assignment-error').textContent = error.message;
+                document.getElementById('assignment-error').style.display = 'block';
+            } finally {
+                submitBtn.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+            }
+        });
+
+        // Save assignment
+        document.getElementById('save-assignment-btn').addEventListener('click', async () => {
+            try {
+                const formData = new FormData();
+                formData.append('student_id', currentAssignmentStudentId);
+                formData.append('difficulty', document.getElementById('assign-difficulty').value);
+                formData.append('length', document.getElementById('assign-length').value);
+                
+                const res = await fetch('/api/assignments', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'فشل في الحفظ');
+                
+                assignmentModal.style.display = 'none';
+                alert('تم تعيين النص للطالب بنجاح!');
+            } catch (error) {
+                document.getElementById('assignment-error').textContent = error.message;
+                document.getElementById('assignment-error').style.display = 'block';
+            }
+        });
+
+        // Populate settings form
+        function populateSettings(settings) {
+            document.getElementById('words_per_minute_normal').value = settings.words_per_minute_normal || 120;
+            document.getElementById('ratio_ideal_min').value = settings.ratio_ideal_min || 0.8;
+            document.getElementById('ratio_ideal_max').value = settings.ratio_ideal_max || 1.3;
+            document.getElementById('ratio_fast_min').value = settings.ratio_fast_min || 0.6;
+            document.getElementById('ratio_slow_max').value = settings.ratio_slow_max || 1.8;
+            document.getElementById('word_match_weight').value = settings.word_match_weight || 0.7;
+            document.getElementById('pace_weight').value = settings.pace_weight || 0.3;
+            document.getElementById('score_excellent').value = settings.score_excellent || 90;
+            document.getElementById('score_very_good').value = settings.score_very_good || 75;
+            document.getElementById('score_good').value = settings.score_good || 60;
+            document.getElementById('score_needs_improvement').value = settings.score_needs_improvement || 40;
+        }
+
+        // Save settings
+        document.getElementById('settings-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const btnLoading = submitBtn.querySelector('.btn-loading');
+            const successMsg = document.getElementById('settings-success');
+            
+            submitBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+            successMsg.style.display = 'none';
+            
+            try {
+                const formData = new FormData(form);
+                const res = await fetch('/api/settings', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'فشل في الحفظ');
+                
+                successMsg.style.display = 'block';
+                setTimeout(() => { successMsg.style.display = 'none'; }, 3000);
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                submitBtn.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+            }
+        });
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    })();
+    </script>
+</body>
+</html>

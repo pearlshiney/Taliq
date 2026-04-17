@@ -1,34 +1,38 @@
 <!DOCTYPE html>
 <!--
-    Arabic Reading Evaluation App - Main HTML Template
+    طَلِقْ - Main Student Application
     
-    This is a Single Page Application (SPA) with three views:
-    1. Text Generator (الصفحة 1) - Generate Arabic text using AI
-    2. Reading Recorder (الصفحة 2) - Record user reading
-    3. Evaluation (الصفحة 3) - Compare and score reading
-
+    Simplified flow:
+    1. Student selects their name from dropdown
+    2. Assigned paragraph is shown
+    3. Student records their reading
+    4. Evaluation is shown
 -->
 <html lang="ar" dir="rtl">
 <head>
-    <!-- Meta tags for character encoding and responsive design -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="تطبيق تقييم مهارات القراءة باللغة العربية">
-    
-    <!-- Page title in Arabic -->
-    <title>طَلِقْ</title>
-    
-    <!-- Main stylesheet -->
+    <meta name="description" content="تطبيق طَلِقْ لتقييم مهارات القراءة باللغة العربية">
+    <title>طَلِقْ - تقييم مهارات القراءة</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+    <!-- ==================== NAVIGATION MENU ==================== -->
+    <nav class="nav-menu">
+        <div class="container nav-container">
+            <a href="/" class="nav-brand">📚 طَلِقْ</a>
+            <div class="nav-links">
+                <a href="/dashboard" class="nav-link">📊 لوحة النتائج</a>
+                <a href="/control-panel" class="nav-link">⚙️ لوحة التحكم</a>
+            </div>
+        </div>
+    </nav>
+
     <!-- ==================== HEADER ==================== -->
     <header class="app-header">
         <div class="container">
-            <h1>طَلِقْ</h1>
-            <h1>📚 لتقييم مهارات القراءة</h1>
+            <h1>📚 طَلِقْ</h1>
             <p class="subtitle">تطبيق لتقييم مهارات قراءة اللغة العربية باستخدام الذكاء الاصطناعي</p>
-            <a href="/dashboard" class="dashboard-link">📊 لوحة النتائج</a>
         </div>
     </header>
 
@@ -36,21 +40,16 @@
     <nav class="progress-steps">
         <div class="container">
             <div class="steps-container">
-                <!-- Step 1: Generate Text -->
                 <div class="step active" data-step="1">
                     <span class="step-number">١</span>
-                    <span class="step-label">إنشاء النص</span>
+                    <span class="step-label">اختيار الطالب</span>
                 </div>
-                <!-- Connector line -->
                 <div class="step-connector"></div>
-                <!-- Step 2: Record Reading -->
                 <div class="step" data-step="2">
                     <span class="step-number">٢</span>
                     <span class="step-label">التسجيل</span>
                 </div>
-                <!-- Connector line -->
                 <div class="step-connector"></div>
-                <!-- Step 3: Evaluation -->
                 <div class="step" data-step="3">
                     <span class="step-number">٣</span>
                     <span class="step-label">التقييم</span>
@@ -63,62 +62,46 @@
     <main class="main-content">
         <div class="container">
             
-            <!-- ============== VIEW 1: TEXT GENERATOR ============== -->
+            <!-- ============== VIEW 1: STUDENT SELECTOR ============== -->
             <section id="view-1" class="view active">
                 <div class="card">
-                    <h2>📝 إنشاء نص للقراءة</h2>
+                    <h2>🎓 اختيار الطالب</h2>
                     <p class="description">
-                        اختر مستوى الصعوبة وطول النص، ثم اضغط على زر الإنشاء لتوليد نص عربي مناسب.
+                        اختر اسمك من القائمة أدناه لبدء التقييم.
                     </p>
                     
-                    <!-- Text Generation Form -->
-                    <form id="generate-form" class="form">
-                        <!-- Difficulty Level Dropdown -->
-                        <div class="form-group">
-                            <label for="difficulty">مستوى الصعوبة:</label>
-                            <select id="difficulty" name="difficulty" required>
-                                <option value="beginner">🟢 مبتدئ - كلمات بسيطة وجمل قصيرة</option>
-                                <option value="intermediate">🟡 متوسط - مفردات متنوعة وجمل متوسطة</option>
-                                <option value="advanced">🔴 متقدم - مفردات صعبة وجمل معقدة</option>
-                            </select>
-                        </div>
-                        
-                        <!-- Length Dropdown -->
-                        <div class="form-group">
-                            <label for="length">طول النص:</label>
-                            <select id="length" name="length" required>
-                                <option value="short">📄 قصير - جملتان إلى ثلاث</option>
-                                <option value="medium">📄📄 متوسط - أربع إلى ست جمل</option>
-                                <option value="long">📄📄📄 طويل - سبع إلى عشر جمل</option>
-                            </select>
-                        </div>
-                        
-                        <!-- Student Name Input -->
-                        <div class="form-group">
-                            <label for="student-name">اسم الطالب:</label>
-                            <input type="text" id="student-name" name="student-name" placeholder="أدخل اسم الطالب" required class="student-name-input">
-                        </div>
-                        
-                        <!-- Generate Button -->
-                        <button type="submit" class="btn btn-primary" id="generate-btn">
-                            <span class="btn-text">إنشاء النص</span>
-                            <span class="btn-loading" style="display: none;">جاري التوليد...</span>
-                        </button>
-                    </form>
-                    
-                    <!-- Generated Text Display Area -->
-                    <div id="generated-text-container" class="text-display-container" style="display: none;">
-                        <h3>النص المُنشأ:</h3>
-                        <div id="generated-text" class="text-display">
-                            <!-- Generated text will appear here -->
-                        </div>
-                        <button id="go-to-record-btn" class="btn btn-success">
-                            الانتقال للقراءة ←
-                        </button>
+                    <div id="student-loading" class="dashboard-loading">
+                        جاري تحميل قائمة الطلاب...
                     </div>
                     
-                    <!-- Error Message Display -->
-                    <div id="generate-error" class="error-message" style="display: none;"></div>
+                    <div id="student-form" class="form" style="display: none;">
+                        <div class="form-group">
+                            <label for="student-select">اسم الطالب:</label>
+                            <select id="student-select" name="student" required>
+                                <option value="">-- اختر اسمك --</option>
+                            </select>
+                        </div>
+                        
+                        <div id="assignment-info" class="assignment-info" style="display: none;">
+                            <h3>📖 النص المُعيّن:</h3>
+                            <div id="assigned-text" class="text-display">
+                                <!-- Assigned text appears here -->
+                            </div>
+                            <div class="assignment-meta">
+                                <span id="assignment-level" class="meta-badge"></span>
+                                <span id="assignment-length" class="meta-badge"></span>
+                            </div>
+                            <button id="go-to-record-btn" class="btn btn-success">
+                                الانتقال للقراءة ←
+                            </button>
+                        </div>
+                        
+                        <div id="no-assignment" class="no-results" style="display: none;">
+                            <p>⚠️ لا يوجد نص معين لك حالياً. يرجى مراجعة المشرف.</p>
+                        </div>
+                    </div>
+                    
+                    <div id="student-error" class="error-message" style="display: none;"></div>
                 </div>
             </section>
 
@@ -130,44 +113,36 @@
                         اقرأ النص أدناه بصوت واضح، ثم اضغط على زر التسجيل.
                     </p>
                     
-                    <!-- Original Text Display (Read-only) -->
                     <div class="text-box-container">
                         <h3>النص المطلوب قراءته:</h3>
                         <div id="original-text-display" class="text-box original-text">
-                            <!-- Original text will be copied here from View 1 -->
+                            <!-- Original text will be copied here -->
                         </div>
                     </div>
                     
-                    <!-- Recording Controls -->
                     <div class="recording-section">
                         <div class="recording-controls">
-                            <!-- Start Recording Button -->
                             <button id="start-record-btn" class="btn btn-record">
                                 🔴 بدء التسجيل
                             </button>
-                            
-                            <!-- Stop Recording Button (initially hidden) -->
                             <button id="stop-record-btn" class="btn btn-stop" style="display: none;">
                                 ⏹️ إيقاف التسجيل
                             </button>
                         </div>
                         
-                        <!-- Recording Status Indicator -->
                         <div id="recording-status" class="recording-status" style="display: none;">
                             <span class="recording-dot"></span>
                             <span>جاري التسجيل...</span>
                         </div>
                         
-                        <!-- Audio Preview (appears after recording) -->
                         <div id="audio-preview-container" class="audio-preview" style="display: none;">
                             <h4>معاينة التسجيل:</h4>
                             <audio id="audio-preview" controls></audio>
                         </div>
                     </div>
                     
-                    <!-- Action Buttons -->
                     <div class="action-buttons">
-                        <button id="back-to-generate-btn" class="btn btn-secondary">
+                        <button id="back-to-student-btn" class="btn btn-secondary">
                             → العودة
                         </button>
                         <button id="submit-evaluation-btn" class="btn btn-success" disabled>
@@ -176,7 +151,6 @@
                         </button>
                     </div>
                     
-                    <!-- Error Message Display -->
                     <div id="record-error" class="error-message" style="display: none;"></div>
                 </div>
             </section>
@@ -189,7 +163,6 @@
                         مقارنة بين النص الأصلي والنص الذي تم التعرف عليه من تسجيلك.
                     </p>
                     
-                    <!-- Score Card with Grade -->
                     <div class="score-card">
                         <div class="score-circle">
                             <span id="score-value" class="score-number">0%</span>
@@ -198,14 +171,11 @@
                         <div id="grade-badge" class="grade-badge">-</div>
                     </div>
                     
-                    <!-- Summary Metrics -->
                     <div id="evaluation-summary" class="evaluation-summary">
                         <!-- Populated by JavaScript -->
                     </div>
                     
-                    <!-- Detailed Metrics Grid -->
                     <div class="metrics-grid">
-                        <!-- Accuracy Metric -->
                         <div class="metric-card">
                             <div class="metric-icon">🎯</div>
                             <div class="metric-content">
@@ -214,7 +184,6 @@
                             </div>
                         </div>
                         
-                        <!-- Pace Metric -->
                         <div class="metric-card">
                             <div class="metric-icon">⏱️</div>
                             <div class="metric-content">
@@ -223,7 +192,6 @@
                             </div>
                         </div>
                         
-                        <!-- Correct Words -->
                         <div class="metric-card correct">
                             <div class="metric-icon">✅</div>
                             <div class="metric-content">
@@ -232,7 +200,6 @@
                             </div>
                         </div>
                         
-                        <!-- Missing Words -->
                         <div class="metric-card missing">
                             <div class="metric-icon">❌</div>
                             <div class="metric-content">
@@ -241,7 +208,6 @@
                             </div>
                         </div>
                         
-                        <!-- Extra Words -->
                         <div class="metric-card extra">
                             <div class="metric-icon">➕</div>
                             <div class="metric-content">
@@ -249,18 +215,8 @@
                                 <span id="extra-count" class="metric-value">-</span>
                             </div>
                         </div>
-                        
-                        <!-- Hesitation -->
-                        <div class="metric-card hesitation">
-                            <div class="metric-icon">💭</div>
-                            <div class="metric-content">
-                                <span class="metric-label">ترددات</span>
-                                <span id="hesitation-count" class="metric-value">-</span>
-                            </div>
-                        </div>
                     </div>
                     
-                    <!-- Pace Details -->
                     <div class="pace-details">
                         <h4>📈 تقييم السرعة:</h4>
                         <div class="pace-info">
@@ -270,28 +226,23 @@
                         <div id="duration-info" class="duration-info">-</div>
                     </div>
                     
-                    <!-- Text Comparison -->
                     <div class="comparison-container">
-                        <!-- Original Text -->
                         <div class="comparison-box">
                             <h3>النص الأصلي:</h3>
                             <div id="eval-original-text" class="text-box comparison-text"></div>
                         </div>
                         
-                        <!-- Transcribed Text -->
                         <div class="comparison-box">
                             <h3>النص المسموع:</h3>
                             <div id="eval-transcribed-text" class="text-box comparison-text"></div>
                         </div>
                     </div>
                     
-                    <!-- Mistakes Summary -->
                     <div id="mistakes-container" class="mistakes-section" style="display: none;">
                         <h3>⚠️ تحليل الأخطاء:</h3>
                         <ul id="mistakes-list"></ul>
                     </div>
                     
-                    <!-- TTS Audio Player -->
                     <div class="tts-section">
                         <h3>🔊 النطق الصحيح:</h3>
                         <p class="hint">اضغط على الزر للاستماع للنطق الصحيح للنص</p>
@@ -299,18 +250,15 @@
                             <span class="btn-text">▶️ تشغيل النطق الصحيح</span>
                             <span class="btn-loading" style="display: none;">جاري التوليد...</span>
                         </button>
-                        <!-- TTS Audio Element -->
                         <audio id="tts-audio" style="display: none;"></audio>
                     </div>
                     
-                    <!-- Action Buttons -->
                     <div class="action-buttons">
                         <button id="try-again-btn" class="btn btn-primary">
                             🔄 إعادة المحاولة
                         </button>
                     </div>
                     
-                    <!-- Error Message Display -->
                     <div id="eval-error" class="error-message" style="display: none;"></div>
                 </div>
             </section>
@@ -321,12 +269,10 @@
     <!-- ==================== FOOTER ==================== -->
     <footer class="app-footer">
         <div class="container">
-            <p>طَلِقْ : تطبيق تقييم مهارات القراءة باللغة العربية © 2026</p>
+            <p>طَلِقْ - تطبيق تقييم مهارات القراءة باللغة العربية © 2026</p>
         </div>
     </footer>
 
-    <!-- ==================== JAVASCRIPT ==================== -->
-    <!-- Main application logic -->
     <script src="/static/js/app.js"></script>
 </body>
 </html>

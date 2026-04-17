@@ -94,6 +94,7 @@ def ask_nuha(difficulty: str, length: str) -> str:
             f"المستوى: {difficulty_ar}. "
             f"الطول: {length_ar}. "
             f"اكتب فقط النص بدون أي مقدمات أو تعليقات."
+            f"اضف الحركات والتشكيل الصحيح على النص حسب الحاجة."
         )
         
         # Prepare messages for the chat completion API
@@ -226,6 +227,61 @@ def transcribe_audio(audio_file_path: str) -> str:
         # Log the error and re-raise with a user-friendly message
         print(f"[ERROR] Failed to transcribe audio with Elm-ASR: {str(e)}")
         raise Exception(f"فشل في تحويل الصوت لنص: {str(e)}")
+
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
+
+# =============================================================================
+# TASHKEEL REMOVAL
+# =============================================================================
+
+def remove_tashkeel(text: str) -> str:
+    """
+    Remove Arabic diacritics (tashkeel) from text using Nuha-2.0 LLM.
+    
+    This ensures clean text for both TTS generation and text comparison,
+    preventing pronunciation issues caused by incorrect harakat.
+    
+    Args:
+        text (str): Arabic text potentially containing tashkeel
+    
+    Returns:
+        str: The same text with all diacritics removed
+    
+    Raises:
+        Exception: If the API call fails
+    """
+    try:
+        system_prompt = (
+            "أنت مساعد متخصص في معالجة النصوص العربية. "
+            "مهمتك إزالة التشكيل (الحركات) من النصوص العربية فقط. "
+            "لا تغير أي كلمة، ولا تضيف أو تحذف أي حرف. "
+            "أعد النص كما هو بالضبط لكن بدون أي تشكيل."
+        )
+        
+        user_prompt = f"أزل التشكيل من النص التالي وأعد النص بدون أي تشكيل:\n\n{text}"
+        
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ]
+        
+        response = client.chat.completions.create(
+            model=LLM_MODEL,
+            messages=messages,
+            stream=False,
+            temperature=0.1,
+            max_tokens=1000
+        )
+        
+        cleaned_text = response.choices[0].message.content.strip()
+        return cleaned_text
+        
+    except Exception as e:
+        print(f"[ERROR] Failed to remove tashkeel with Nuha: {str(e)}")
+        raise Exception(f"فشل في إزالة التشكيل: {str(e)}")
 
 
 # =============================================================================

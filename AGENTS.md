@@ -8,6 +8,8 @@ This is a **FastAPI-based web application** for evaluating Arabic reading skills
 2. **Recording user reading** via browser microphone
 3. **Evaluating pronunciation** using Elm-ASR for transcription and comparison
 4. **Playing correct pronunciation** using Elm-TTS text-to-speech
+5. **Tracking student progress** with per-student evaluation history
+6. **Reviewing results** via a decision-maker dashboard
 
 The app is designed as a **Single Page Application (SPA)** with an RTL (Right-to-Left) Arabic interface.
 
@@ -16,6 +18,10 @@ The app is designed as a **Single Page Application (SPA)** with an RTL (Right-to
 - Real-time audio recording using Web Audio API
 - AI-powered text comparison and scoring
 - Text-to-speech for correct pronunciation reference
+- Student name capture for each evaluation run
+- Persistent SQLite database storing all evaluation results, generated texts, and transcriptions
+- Persistent file storage for all recordings and generated TTS audio
+- Decision-maker dashboard (`/dashboard`) to view all student results with playback
 - Mobile-responsive design
 
 ---
@@ -25,6 +31,7 @@ The app is designed as a **Single Page Application (SPA)** with an RTL (Right-to
 | Layer | Technology | Purpose |
 |-------|------------|---------|
 | Backend | Python 3.x + FastAPI | REST API server |
+| Database | SQLite 3 (built-in) | Embedded database for evaluation history |
 | AI Client | OpenAI-compatible client | Integration with Elmodels API |
 | AI Models | Nuha-2.0, Elm-TTS, Elm-ASR | Arabic LLM, TTS, and ASR |
 | Frontend | Vanilla JavaScript (ES6+) | SPA logic and UI interactions |
@@ -49,7 +56,8 @@ The app is designed as a **Single Page Application (SPA)** with an RTL (Right-to
 ├── AGENTS.md           # This file
 │
 ├── templates/          # Jinja2 HTML templates
-│   └── index.html      # Main SPA template (Arabic RTL)
+│   ├── index.html      # Main SPA template (Arabic RTL)
+│   └── dashboard.html  # Decision-maker dashboard
 │
 ├── static/             # Static assets
 │   ├── css/
@@ -57,8 +65,11 @@ The app is designed as a **Single Page Application (SPA)** with an RTL (Right-to
 │   └── js/
 │       └── app.js      # Frontend JavaScript logic
 │
-└── speeches/           # Generated audio files (TTS output)
-    └── .gitkeep        # Keep directory in git
+├── speeches/           # Generated audio files (TTS output)
+│   └── .gitkeep        # Keep directory in git
+├── recordings/         # Saved student audio recordings
+│   └── .gitkeep        # Keep directory in git
+└── evaluations.db      # SQLite database file
 ```
 
 ---
@@ -72,12 +83,16 @@ The FastAPI application provides these endpoints:
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/` | GET | Serve the main HTML page |
+| `/dashboard` | GET | Decision-maker dashboard showing all results |
 | `/api/generate-text` | POST | Generate Arabic text using Nuha LLM |
-| `/api/transcribe` | POST | Transcribe audio using Elm-ASR |
-| `/api/generate-speech` | POST | Generate TTS audio using Elm-TTS |
+| `/api/transcribe` | POST | Transcribe audio using Elm-ASR and persist the file |
+| `/api/evaluate` | POST | Evaluate reading and save result to SQLite |
+| `/api/generate-speech` | POST | Generate TTS audio and optionally link to evaluation |
+| `/api/results` | GET | Retrieve all evaluation records from the database |
 | `/api/health` | GET | Health check endpoint |
 | `/static/*` | GET | Static files (CSS, JS) |
 | `/speeches/*` | GET | Generated audio files |
+| `/recordings/*` | GET | Saved student audio recordings |
 
 **Input Validation:**
 - `difficulty`: `"beginner"`, `"intermediate"`, or `"advanced"`
@@ -126,7 +141,14 @@ Single Page Application with three views:
     transcribedText: '',
     audioBlob: null,
     audioUrl: null,
-    ttsAudioUrl: null
+    ttsAudioUrl: null,
+    recordingDuration: 0,
+    evaluation: null,
+    studentName: '',
+    difficulty: '',
+    length: '',
+    recordingUrl: null,
+    evaluationId: null
 }
 ```
 
@@ -300,9 +322,10 @@ tests/
    - In production, use environment variables or secret management
 
 2. **File Uploads**
-   - Temporary audio files are stored in `speeches/` directory
-   - Files are cleaned up after transcription
-   - Generated MP3 files persist for TTS playback
+   - Student audio recordings are stored permanently in `recordings/` directory
+   - Generated TTS audio files are stored in `speeches/` directory
+   - All audio files are served statically and linked to database records
+   - SQLite database (`evaluations.db`) stores evaluation metadata and file paths
 
 3. **CORS**
    - Currently using default FastAPI CORS settings
@@ -326,9 +349,8 @@ tests/
 - Generated audio files are served statically
 
 ### Scaling Considerations
-- Application is stateless (except for generated audio files)
-- Can be scaled horizontally with load balancer
-- Consider using cloud storage (S3, etc.) for audio files in production
+- Application state is stored in the local SQLite database (`evaluations.db`) and on disk (`recordings/`, `speeches/`)
+- For horizontal scaling, move SQLite to a shared database (PostgreSQL/MySQL) and use cloud storage (S3, etc.) for audio files
 
 ---
 
@@ -372,4 +394,4 @@ For issues related to:
 
 ---
 
-*Last updated: 2026-04-12*
+*Last updated: 2026-04-17*

@@ -91,13 +91,21 @@ Desktop.ini
 # Application Specific
 # -----------------------------------------------------------------------------
 
-# Generated audio files (TTS and temporary recordings)
+# Generated audio files (TTS and saved recordings)
 speeches/*.mp3
 speeches/*.webm
 speeches/*.wav
 speeches/*.ogg
-# Keep the .gitkeep file so the folder structure is preserved
+recordings/*.mp3
+recordings/*.webm
+recordings/*.wav
+recordings/*.ogg
+# Keep the .gitkeep files so the folder structure is preserved
 !speeches/.gitkeep
+!recordings/.gitkeep
+
+# SQLite database
+evaluations.db
 
 # Logs
 *.log

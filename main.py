@@ -15,6 +15,7 @@ API Endpoints:
 """
 
 import os
+import sqlite3
 import uuid
 from pathlib import Path
 from typing import Optional
@@ -46,10 +47,44 @@ app = FastAPI(
 # Get absolute paths for file serving
 BASE_DIR = Path(__file__).parent.resolve()
 SPEECHES_DIR = BASE_DIR / "speeches"
+RECORDINGS_DIR = BASE_DIR / "recordings"
+DB_PATH = BASE_DIR / "evaluations.db"
 
 # Ensure speeches folder exists on startup
 # This is where generated TTS audio files will be stored
 ensure_speeches_folder(str(SPEECHES_DIR))
+
+# Ensure recordings folder exists for student audio files
+os.makedirs(RECORDINGS_DIR, exist_ok=True)
+
+# Initialize SQLite database
+def init_db():
+    """Initialize the SQLite database with the evaluations table."""
+    conn = sqlite3.connect(str(DB_PATH))
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS evaluations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_name TEXT NOT NULL,
+            difficulty TEXT,
+            length TEXT,
+            generated_text TEXT,
+            transcribed_text TEXT,
+            recording_file_path TEXT,
+            tts_file_path TEXT,
+            overall_score REAL,
+            grade TEXT,
+            grade_color TEXT,
+            word_match_score REAL,
+            pace_score REAL,
+            pace_evaluation TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
 
 # Mount static files directories
 # /static serves CSS and JS files
@@ -57,6 +92,9 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 
 # /speeches serves generated audio files
 app.mount("/speeches", StaticFiles(directory=str(SPEECHES_DIR)), name="speeches")
+
+# /recordings serves student audio recordings
+app.mount("/recordings", StaticFiles(directory=str(RECORDINGS_DIR)), name="recordings")
 
 # Setup Jinja2 templates for HTML rendering
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -186,31 +224,32 @@ async def api_transcribe(
         }
     """
     try:
-        # Generate a unique filename for the temporary audio file
+        # Generate a unique filename for the audio file in recordings directory
         file_extension = Path(audio_file.filename).suffix or ".webm"
-        temp_filename = f"temp_{uuid.uuid4().hex}{file_extension}"
-        temp_filepath = SPEECHES_DIR / temp_filename
+        recording_filename = f"recording_{uuid.uuid4().hex}{file_extension}"
+        recording_filepath = RECORDINGS_DIR / recording_filename
         
-        # Save the uploaded audio file to disk
-        with open(temp_filepath, "wb") as f:
+        # Save the uploaded audio file to disk permanently
+        with open(recording_filepath, "wb") as f:
             content = await audio_file.read()
             f.write(content)
         
         # Call the AI client to transcribe the audio
-        transcribed_text = transcribe_audio(str(temp_filepath))
+        transcribed_text = transcribe_audio(str(recording_filepath))
         
-        # Clean up: remove the temporary audio file
-        os.remove(temp_filepath)
+        # Return the transcription and permanent recording URL
+        recording_url = f"/recordings/{recording_filename}"
         
         return JSONResponse({
             "transcription": transcribed_text,
-            "recording_duration": recording_duration
+            "recording_duration": recording_duration,
+            "recording_url": recording_url
         })
         
     except Exception as e:
         # Cleanup on error if file exists
-        if 'temp_filepath' in locals() and os.path.exists(temp_filepath):
-            os.remove(temp_filepath)
+        if 'recording_filepath' in locals() and os.path.exists(recording_filepath):
+            os.remove(recording_filepath)
         
         return JSONResponse(
             status_code=500,
@@ -226,7 +265,11 @@ async def api_transcribe(
 async def api_evaluate(
     original_text: str = Form(...),
     transcribed_text: str = Form(...),
-    recording_duration: float = Form(0.0)
+    recording_duration: float = Form(0.0),
+    student_name: str = Form(...),
+    difficulty: str = Form(...),
+    length: str = Form(...),
+    recording_url: str = Form(...)
 ):
     """
     API endpoint to evaluate reading performance.
@@ -237,13 +280,19 @@ async def api_evaluate(
     - Extra words (words transcribed but not in original)
     - Reading pace evaluation
     
+    Also persists the evaluation results to the database.
+    
     Args:
         original_text (str): The original Arabic text that should be read
         transcribed_text (str): The text transcribed from user's audio
         recording_duration (float): Duration of recording in seconds
+        student_name (str): Name of the student
+        difficulty (str): Difficulty level selected
+        length (str): Text length selected
+        recording_url (str): URL to the saved recording file
     
     Returns:
-        JSONResponse: Detailed evaluation metrics
+        JSONResponse: Detailed evaluation metrics and evaluation_id
     """
     try:
         evaluation = evaluate_reading(
@@ -252,7 +301,38 @@ async def api_evaluate(
             recording_duration
         )
         
-        return JSONResponse({"evaluation": evaluation})
+        # Persist to database
+        conn = sqlite3.connect(str(DB_PATH))
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO evaluations (
+                student_name, difficulty, length, generated_text,
+                transcribed_text, recording_file_path, overall_score,
+                grade, grade_color, word_match_score, pace_score,
+                pace_evaluation
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            student_name,
+            difficulty,
+            length,
+            original_text,
+            transcribed_text,
+            recording_url,
+            evaluation["overall_score"],
+            evaluation["grade"],
+            evaluation["grade_color"],
+            evaluation["word_match_score"],
+            evaluation["pace_score"],
+            evaluation["pace_evaluation"]
+        ))
+        evaluation_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse({
+            "evaluation": evaluation,
+            "evaluation_id": evaluation_id
+        })
         
     except Exception as e:
         return JSONResponse(
@@ -482,15 +562,21 @@ def evaluate_reading(
 
 
 @app.post("/api/generate-speech")
-async def api_generate_speech(text: str = Form(...)):
+async def api_generate_speech(
+    text: str = Form(...),
+    evaluation_id: Optional[str] = Form(None)
+):
     """
     API endpoint to generate TTS audio from Arabic text using Elm-TTS.
     
     This endpoint receives Arabic text, calls the Elm-TTS model to
     generate speech, saves the audio file, and returns the URL.
+    If evaluation_id is provided, the TTS file path is saved to the
+    corresponding evaluation record.
     
     Args:
         text (str): Arabic text to convert to speech
+        evaluation_id (Optional[str]): ID of the evaluation to update
     
     Returns:
         JSONResponse: {"audio_url": "/speeches/filename.mp3"} on success
@@ -498,7 +584,7 @@ async def api_generate_speech(text: str = Form(...)):
     
     Example Request:
         POST /api/generate-speech
-        Form Data: text=مرحباً كيف حالك
+        Form Data: text=مرحباً كيف حالك&evaluation_id=1
     
     Example Response:
         {"audio_url": "/speeches/speech_abc123.mp3"}
@@ -522,12 +608,69 @@ async def api_generate_speech(text: str = Form(...)):
         # The frontend will use this to play the audio
         audio_url = f"/speeches/{filename}"
         
+        # Update database if evaluation_id is provided
+        if evaluation_id:
+            conn = sqlite3.connect(str(DB_PATH))
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE evaluations SET tts_file_path = ? WHERE id = ?",
+                (audio_url, evaluation_id)
+            )
+            conn.commit()
+            conn.close()
+        
         return JSONResponse({"audio_url": audio_url})
         
     except Exception as e:
         return JSONResponse(
             status_code=500,
             content={"error": f"حدث خطأ أثناء توليد الصوت: {str(e)}"}
+        )
+
+
+# =============================================================================
+# DASHBOARD & RESULTS ENDPOINTS
+# =============================================================================
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    """
+    Serve the dashboard HTML page for decision makers.
+    
+    Args:
+        request: FastAPI request object
+    
+    Returns:
+        HTMLResponse: The rendered dashboard.html template
+    """
+    return templates.TemplateResponse(request, "dashboard.html")
+
+
+@app.get("/api/results")
+async def api_results():
+    """
+    API endpoint to retrieve all evaluation results.
+    
+    Returns:
+        JSONResponse: List of all evaluation records ordered by newest first
+    """
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM evaluations ORDER BY created_at DESC"
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        
+        results = [dict(row) for row in rows]
+        return JSONResponse({"results": results})
+        
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"حدث خطأ أثناء جلب النتائج: {str(e)}"}
         )
 
 

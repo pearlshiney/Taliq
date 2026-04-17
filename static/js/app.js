@@ -29,6 +29,11 @@ const appState = {
     ttsAudioUrl: null,        // URL for the generated TTS audio
     recordingDuration: 0,     // Recording duration in seconds
     evaluation: null,         // Evaluation results from backend
+    studentName: '',          // Name of the student
+    difficulty: '',           // Selected difficulty level
+    length: '',               // Selected text length
+    recordingUrl: null,       // Permanent URL to saved recording
+    evaluationId: null,       // Database ID of the evaluation record
 };
 
 // =============================================================================
@@ -143,8 +148,10 @@ async function handleGenerateText(event) {
             throw new Error(data.error || 'فشل في توليد النص');
         }
         
-        // Store the generated text in state
+        // Store the generated text and options in state
         appState.generatedText = data.text;
+        appState.difficulty = difficulty;
+        appState.length = length;
         
         // Display the generated text
         const textDisplay = document.getElementById('generated-text');
@@ -176,6 +183,10 @@ function goToRecordView() {
     // Copy the generated text to View 2
     const originalTextDisplay = document.getElementById('original-text-display');
     originalTextDisplay.textContent = appState.generatedText;
+    
+    // Store student name in state
+    const studentNameInput = document.getElementById('student-name');
+    appState.studentName = studentNameInput ? studentNameInput.value.trim() : '';
     
     // Switch to View 2
     showView(2);
@@ -329,12 +340,17 @@ async function submitForEvaluation() {
         }
         
         appState.transcribedText = transcribeData.transcription;
+        appState.recordingUrl = transcribeData.recording_url || null;
         
         // Step 2: Evaluate reading performance
         const evalFormData = new FormData();
         evalFormData.append('original_text', appState.generatedText);
         evalFormData.append('transcribed_text', appState.transcribedText);
         evalFormData.append('recording_duration', appState.recordingDuration.toString());
+        evalFormData.append('student_name', appState.studentName || 'غير معروف');
+        evalFormData.append('difficulty', appState.difficulty || '');
+        evalFormData.append('length', appState.length || '');
+        evalFormData.append('recording_url', appState.recordingUrl || '');
         
         const evalResponse = await fetch('/api/evaluate', {
             method: 'POST',
@@ -348,6 +364,7 @@ async function submitForEvaluation() {
         }
         
         appState.evaluation = evalData.evaluation;
+        appState.evaluationId = evalData.evaluation_id || null;
         
         // Navigate to evaluation view
         showEvaluationView();
@@ -750,6 +767,9 @@ async function playCorrectSpeech() {
         // Otherwise, generate new TTS
         const formData = new FormData();
         formData.append('text', appState.generatedText);
+        if (appState.evaluationId) {
+            formData.append('evaluation_id', appState.evaluationId.toString());
+        }
         
         const response = await fetch('/api/generate-speech', {
             method: 'POST',
@@ -796,6 +816,11 @@ function resetApp() {
     appState.ttsAudioUrl = null;
     appState.recordingDuration = 0;
     appState.evaluation = null;
+    appState.studentName = '';
+    appState.difficulty = '';
+    appState.length = '';
+    appState.recordingUrl = null;
+    appState.evaluationId = null;
     recordingDuration = 0;
     
     // Reset UI elements

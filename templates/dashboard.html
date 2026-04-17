@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<!--
+    Arabic Reading Evaluation App - Dashboard Template
+    
+    This page displays all student evaluation results for decision makers.
+-->
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="لوحة نتائج تقييم مهارات القراءة باللغة العربية">
+    <title>لوحة النتائج - تقييم مهارات القراءة</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- ==================== HEADER ==================== -->
+    <header class="app-header">
+        <div class="container">
+            <h1>📊 لوحة النتائج</h1>
+            <p class="subtitle">عرض جميع نتائج تقييم مهارات القراءة للطلاب</p>
+            <a href="/" class="dashboard-link">← العودة للتطبيق</a>
+        </div>
+    </header>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="main-content">
+        <div class="container">
+            <section class="view active">
+                <div class="card">
+                    <h2>📋 سجل التقييمات</h2>
+                    <p class="description">
+                        يعرض الجدول أدناه جميع محاولات التقييم مرتبة حسب الأحدث.
+                    </p>
+                    
+                    <!-- Loading Indicator -->
+                    <div id="dashboard-loading" class="dashboard-loading">
+                        جاري تحميل البيانات...
+                    </div>
+                    
+                    <!-- Error Message -->
+                    <div id="dashboard-error" class="error-message" style="display: none;"></div>
+                    
+                    <!-- Results Table Container -->
+                    <div id="results-container" class="results-container" style="display: none;">
+                        <div class="table-wrapper">
+                            <table class="dashboard-table" id="results-table">
+                                <thead>
+                                    <tr>
+                                        <th>الطالب</th>
+                                        <th>التاريخ</th>
+                                        <th>المستوى</th>
+                                        <th>الدرجة</th>
+                                        <th>التقدير</th>
+                                        <th>دقة الكلمات</th>
+                                        <th>إيقاع القراءة</th>
+                                        <th>التسجيل</th>
+                                        <th>النطق الصحيح</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="results-tbody">
+                                    <!-- Rows populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- No Results Message -->
+                    <div id="no-results" class="no-results" style="display: none;">
+                        <p>لا توجد تقييمات مسجلة حتى الآن.</p>
+                    </div>
+                </div>
+                
+                <!-- Detail Cards Container -->
+                <div id="detail-cards" class="detail-cards">
+                    <!-- Detail cards populated by JavaScript -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="app-footer">
+        <div class="container">
+            <p>تطبيق تقييم مهارات القراءة باللغة العربية © 2026</p>
+        </div>
+    </footer>
+
+    <!-- ==================== JAVASCRIPT ==================== -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loadingEl = document.getElementById('dashboard-loading');
+            const errorEl = document.getElementById('dashboard-error');
+            const containerEl = document.getElementById('results-container');
+            const noResultsEl = document.getElementById('no-results');
+            const tbodyEl = document.getElementById('results-tbody');
+            const detailCardsEl = document.getElementById('detail-cards');
+            
+            try {
+                const response = await fetch('/api/results');
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'فشل في جلب النتائج');
+                }
+                
+                loadingEl.style.display = 'none';
+                
+                if (!data.results || data.results.length === 0) {
+                    noResultsEl.style.display = 'block';
+                    return;
+                }
+                
+                containerEl.style.display = 'block';
+                
+                // Render table rows
+                data.results.forEach(result => {
+                    const row = document.createElement('tr');
+                    
+                    const dateStr = result.created_at
+                        ? new Date(result.created_at).toLocaleString('ar-SA')
+                        : '-';
+                    
+                    const recordingCell = result.recording_file_path
+                        ? `<audio controls src="${result.recording_file_path}"></audio>`
+                        : '<span class="text-muted">غير متوفر</span>';
+                    
+                    const ttsCell = result.tts_file_path
+                        ? `<audio controls src="${result.tts_file_path}"></audio>`
+                        : '<span class="text-muted">غير متوفر</span>';
+                    
+                    row.innerHTML = `
+                        <td><strong>${escapeHtml(result.student_name || '-')}</strong></td>
+                        <td>${dateStr}</td>
+                        <td>${formatLevel(result.difficulty)} / ${formatLength(result.length)}</td>
+                        <td><span class="score-badge">${result.overall_score !== null ? result.overall_score + '%' : '-'}</span></td>
+                        <td><span class="grade-text grade-${result.grade_color || 'default'}">${result.grade || '-'}</span></td>
+                        <td>${result.word_match_score !== null ? result.word_match_score + '%' : '-'}</td>
+                        <td>${result.pace_evaluation || '-'}</td>
+                        <td class="audio-cell">${recordingCell}</td>
+                        <td class="audio-cell">${ttsCell}</td>
+                    `;
+                    
+                    tbodyEl.appendChild(row);
+                    
+                    // Create detail card for texts
+                    const card = document.createElement('div');
+                    card.className = 'card detail-card';
+                    card.innerHTML = `
+                        <h3>📝 تقييم ${escapeHtml(result.student_name || '-')} - ${dateStr}</h3>
+                        <div class="detail-texts">
+                            <div class="detail-box">
+                                <h4>النص الأصلي:</h4>
+                                <p>${escapeHtml(result.generated_text || '-')}</p>
+                            </div>
+                            <div class="detail-box">
+                                <h4>النص المستخرج من التسجيل:</h4>
+                                <p>${escapeHtml(result.transcribed_text || '-')}</p>
+                            </div>
+                        </div>
+                    `;
+                    detailCardsEl.appendChild(card);
+                });
+                
+            } catch (error) {
+                loadingEl.style.display = 'none';
+                errorEl.textContent = error.message;
+                errorEl.style.display = 'block';
+                console.error('Error loading dashboard:', error);
+            }
+        });
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function formatLevel(difficulty) {
+            const levels = {
+                'beginner': 'مبتدئ',
+                'intermediate': 'متوسط',
+                'advanced': 'متقدم'
+            };
+            return levels[difficulty] || difficulty || '-';
+        }
+        
+        function formatLength(length) {
+            const lengths = {
+                'short': 'قصير',
+                'medium': 'متوسط',
+                'long': 'طويل'
+            };
+            return lengths[length] || length || '-';
+        }
+    </script>
+</body>
+</html>

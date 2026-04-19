@@ -5,9 +5,9 @@ A FastAPI-based web application for evaluating Arabic reading skills using AI. T
 
 ---
 
-## Demo Website
+## Demo Website طَلِقْ (Taliq) 
 A demo **طَلِقْ (Taliq)** website can be accessed from the link below:\
-https://taliq.onrender.com/
+- https://taliq.onrender.com/
 
 ---
 

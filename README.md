@@ -1,6 +1,13 @@
 # طَلِقْ (Taliq) — Arabic Reading Evaluation
 
+
 A FastAPI-based web application for evaluating Arabic reading skills using AI. The app generates Arabic text with tashkeel (diacritics), records students reading aloud, transcribes their speech, and evaluates pronunciation accuracy with a visual word-level diff.
+
+---
+
+## Demo Website
+A demo **طَلِقْ (Taliq)** website can be accessed from the link below:\
+https://taliq.onrender.com/
 
 ---
 

@@ -136,7 +136,6 @@ Hakathon/
 ├── requirements.txt         # Python dependencies
 ├── .env                     # Environment variables (API key) — not committed
 ├── .gitignore              # Git ignore rules
-├── AGENTS.md               # Detailed agent/developer documentation
 ├── README.md               # This file
 │
 ├── templates/              # Jinja2 HTML templates

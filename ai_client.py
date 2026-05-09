@@ -10,6 +10,9 @@ It handles all interactions with three AI models:
 """
 
 import os
+import requests
+import base64
+import json
 from openai import OpenAI
 from dotenv import load_dotenv
 
@@ -30,10 +33,17 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1"  # Base URL for OpenRouter API
 )
 
+# Initialize the OpenRouter client with OpenRouter API configuration
+opoenrouter_url="https://openrouter.ai/api/v1/audio/transcriptions"
+opoenrouter_headers={
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
 # Model names as specified on OpenRouter
 # These can be changed to any compatible model available on OpenRouter
-LLM_MODEL = "google/gemini-2.0-flash-001"      # For Arabic text generation
-TTS_MODEL = "openai/tts-1"                     # For text-to-speech
+LLM_MODEL = "google/gemma-4-31b-it"      # For Arabic text generation
+TTS_MODEL = "openai/gpt-4o-mini-tts-2025-12-15"                     # For text-to-speech
 ASR_MODEL = "openai/whisper-1"                 # For speech-to-text
 
 # Default voice for TTS (OpenAI voices: alloy, echo, fable, onyx, nova, shimmer)
@@ -162,6 +172,7 @@ def generate_speech_file(text: str, output_path: str) -> str:
             model=TTS_MODEL,
             voice=TTS_VOICE,
             input=text,
+            response_format="mp3"
         ) as response:
             # Stream the audio data directly to the file
             response.stream_to_file(output_path)
@@ -206,19 +217,31 @@ def transcribe_audio(audio_file_path: str) -> str:
         
         # Open the audio file in binary mode
         # The API handles format detection automatically
-        with open(audio_file_path, "rb") as audio_file:
-            # Call the ASR model for transcription via OpenRouter
-            transcription = client.audio.transcriptions.create(
-                model=ASR_MODEL,
-                file=audio_file
-            )
-        
+
+
+        with open(audio_file_path, "rb") as f:
+            base64_audio = base64.b64encode(f.read()).decode("utf-8")
+
+        response = requests.post(
+            url=opoenrouter_url,
+            headers=opoenrouter_headers,
+            data=json.dumps({
+                "model": ASR_MODEL,
+                "input_audio": {
+                    "data": base64_audio,
+                    "format": "webm"
+                },
+                "language": "ar"
+            })
+        )
         # Extract the transcribed text
         # The response object has a 'text' attribute
-        transcribed_text = transcription.text.strip()
+        result = response.json()
+        transcribed_text = result["text"].strip()
         
+        # return transcribed_text
         return transcribed_text
-        
+    
     except FileNotFoundError as e:
         # Re-raise file not found errors with Arabic message
         raise Exception(f"ملف الصوت غير موجود: {str(e)}")
@@ -262,7 +285,7 @@ def remove_tashkeel(text: str) -> str:
         )
         
         user_prompt = (
-            "أزل التشكيل من النص التالي وأعد النص بدون أي تشكيل:"
+            "أزل جميع علامات الترقيم والتشكيل من النص التالي وأعد النص بدون أي علامات الترقيم وبدون أي تشكيل:/n"
             f"{text}"
         )
         

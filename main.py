@@ -30,6 +30,7 @@ API Endpoints:
 import os
 import sqlite3
 import uuid
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -837,6 +838,17 @@ async def api_dashboard_stats():
 async def health_check():
     return JSONResponse({"status": "ok", "service": "طَلِقْ - Arabic Reading Evaluation"})
 
+# =============================================================================
+# NORMALIZATION LOGIC
+# =============================================================================
+
+def normalize_arabic(text):
+    text = re.sub(r'[إأآٱ]', 'ا', text) # Normalize Alef
+    text = re.sub(r'ة', 'ه', text)     # Normalize Teh Marbuta
+    text = re.sub(r'ى', 'ي', text)     # Normalize Alif Maqsura
+    text = re.sub(r'[ًٌٍَُِّْ]', '', text) # Strip Diacritics
+    text = re.sub(r'[,.!]', ' ', text) # Strip Diacritics
+    return text
 
 # =============================================================================
 # EVALUATION LOGIC
@@ -856,13 +868,15 @@ def evaluate_reading(
     """
     settings = get_settings()
 
-        # Remove tashkeel via LLM
-    try:
-        original_tokens_no_tashkeel = remove_tashkeel(original_text)
-    except Exception as te:
-        print(f"[WARN] Tashkeel removal failed: {te}")
+    original_tokens_no_tashkeel = normalize_arabic(original_text)
+    transcribed_text = normalize_arabic(transcribed_text)
+    # # Remove tashkeel via LLM
+    # try:
+    #     original_tokens_no_tashkeel = remove_tashkeel(original_text)
+    # except Exception as te:
+    #     print(f"[WARN] Tashkeel removal failed: {te}")
 
-    
+
     # Raw tokenization (preserve original words, only lower-case for comparison)
     original_tokens_raw = original_tokens_no_tashkeel.split()
     transcribed_tokens_raw = transcribed_text.split()

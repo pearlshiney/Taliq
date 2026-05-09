@@ -8,9 +8,9 @@ This is the main entry point for the web application. It provides:
 - Student management, assignment management, and admin settings
 
 API Endpoints:
-- POST /api/generate-text    : Generate Arabic text using Nuha LLM
-- POST /api/transcribe       : Transcribe audio using Elm-ASR
-- POST /api/generate-speech  : Generate TTS audio using Elm-TTS
+- POST /api/generate-text    : Generate Arabic text using LLM via OpenRouter
+- POST /api/transcribe       : Transcribe audio using ASR via OpenRouter
+- POST /api/generate-speech  : Generate TTS audio via OpenRouter
 - POST /api/evaluate         : Evaluate reading performance
 - GET  /api/students         : List all students
 - POST /api/students         : Create a new student
@@ -40,7 +40,7 @@ from fastapi.templating import Jinja2Templates
 
 # Import our AI client module
 from ai_client import (
-    ask_nuha,
+    ask_llm,
     ensure_speeches_folder,
     generate_speech_file,
     remove_tashkeel,
@@ -422,7 +422,7 @@ async def api_create_assignment(
 ):
     """Create a new assignment by generating text via LLM."""
     try:
-        # generated_text = ask_nuha(difficulty, length)
+        # generated_text = ask_llm(difficulty, length)
 
         conn = sqlite3.connect(str(DB_PATH))
         cursor = conn.cursor()
@@ -561,7 +561,7 @@ async def api_generate_text(
     difficulty: str = Form(...),
     length: str = Form(...)
 ):
-    """Generate Arabic text using Nuha LLM."""
+    """Generate Arabic text using LLM via OpenRouter."""
     try:
         valid_difficulties = ["beginner", "intermediate", "advanced"]
         valid_lengths = ["short", "medium", "long"]
@@ -569,7 +569,7 @@ async def api_generate_text(
             return JSONResponse(status_code=400, content={"error": f"مستوى الصعوبة يجب أن يكون: {', '.join(valid_difficulties)}"})
         if length not in valid_lengths:
             return JSONResponse(status_code=400, content={"error": f"الطول يجب أن يكون: {', '.join(valid_lengths)}"})
-        generated_text = ask_nuha(difficulty, length)
+        generated_text = ask_llm(difficulty, length)
         return JSONResponse({"text": generated_text})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": f"حدث خطأ أثناء توليد النص: {str(e)}"})
@@ -580,7 +580,7 @@ async def api_transcribe(
     audio_file: UploadFile = File(...),
     recording_duration: float = Form(0.0)
 ):
-    """Transcribe audio to Arabic text using Elm-ASR and remove tashkeel."""
+    """Transcribe audio to Arabic text using ASR via OpenRouter."""
     try:
         file_extension = Path(audio_file.filename).suffix or ".webm"
         recording_filename = f"recording_{uuid.uuid4().hex}{file_extension}"
@@ -683,7 +683,7 @@ async def api_generate_speech(
     text: str = Form(...),
     evaluation_id: Optional[str] = Form(None)
 ):
-    """Generate TTS audio from Arabic text using Elm-TTS."""
+    """Generate TTS audio from Arabic text via OpenRouter."""
     try:
         if not text or not text.strip():
             return JSONResponse(status_code=400, content={"error": "النص فارغ"})

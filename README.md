@@ -13,11 +13,11 @@ A demo **طَلِقْ (Taliq)** website can be accessed from the link below:\
 
 ## Features
 
-- **AI-Powered Text Generation** — Generates Arabic paragraphs at three difficulty levels using the Nuha-2.0 LLM
+- **AI-Powered Text Generation** — Generates Arabic paragraphs at three difficulty levels using an LLM via OpenRouter
 - **Browser Audio Recording** — Students record their reading directly in the browser via the Web Audio API
-- **Speech-to-Text** — Transcribes recordings using Elm-ASR and strips tashkeel for fair comparison
+- **Speech-to-Text** — Transcribes recordings using ASR via OpenRouter and strips tashkeel for fair comparison
 - **Word-Level Diff Evaluation** — Colour-coded comparison: green (correct), grey strikethrough (missing), red wavy underline (extra)
-- **Text-to-Speech Reference** — Plays correct pronunciation using Elm-TTS
+- **Text-to-Speech Reference** — Plays correct pronunciation using TTS via OpenRouter
 - **Student Management** — Register students with IDs, assign pre-generated reading texts per student
 - **Admin Control Panel** — Configure scoring thresholds, manage students and assignments
 - **Management Dashboard** — School-wide KPIs, grade distributions, and evaluation history
@@ -30,8 +30,8 @@ A demo **طَلِقْ (Taliq)** website can be accessed from the link below:\
 | Layer | Technology |
 |-------|------------|
 | Backend | Python 3.10+ + FastAPI |
-| AI Client | OpenAI-compatible client (Elmodels API) |
-| AI Models | Nuha-2.0 (LLM), Elm-TTS, Elm-ASR |
+| AI Client | OpenAI-compatible client (OpenRouter API) |
+| AI Models | LLM, TTS, ASR via OpenRouter |
 | Frontend | Vanilla JavaScript (ES6+) SPA |
 | Styling | CSS3 with RTL Arabic support |
 | Database | SQLite (embedded) |
@@ -43,7 +43,7 @@ A demo **طَلِقْ (Taliq)** website can be accessed from the link below:\
 
 - **Python 3.10** or higher
 - **pip** package manager
-- An **API key** for the [Elmodels API](https://elmodels.ngrok.app) (required for AI features)
+- An **API key** for the [OpenRouter API](https://openrouter.ai) (required for AI features)
 - A modern web browser with microphone support (Chrome, Firefox, Edge)
 
 ---
@@ -83,10 +83,10 @@ Create a `.env` file in the project root:
 cp .env.example .env   # if an example exists, or create manually
 ```
 
-Edit `.env` and add your Elmodels API key:
+Edit `.env` and add your OpenRouter API key:
 
 ```env
-API_KEY=your_elmodels_api_key_here
+openrouter_api_key=your_openrouter_api_key_here
 ```
 
 > **Security:** Never commit the `.env` file. It is already listed in `.gitignore`.
@@ -139,7 +139,7 @@ Once the server is running, interactive API docs are available at:
 ```
 Hakathon/
 ├── main.py                  # FastAPI application entry point
-├── ai_client.py             # AI model client wrapper (Elmodels API)
+├── ai_client.py             # AI model client wrapper (OpenRouter API)
 ├── requirements.txt         # Python dependencies
 ├── .env                     # Environment variables (API key) — not committed
 ├── .gitignore              # Git ignore rules
@@ -206,10 +206,10 @@ Management overview with:
 
 ## How Evaluation Works
 
-1. **Text Generation** — Nuha-2.0 generates Arabic text **with tashkeel**
+1. **Text Generation** — LLM generates Arabic text **with tashkeel**
 2. **Tashkeel Removal** — The LLM strips diacritics once at assignment creation; both versions are stored
 3. **Student Recording** — Browser captures audio via `MediaRecorder`
-4. **Transcription** — Elm-ASR converts speech to text, then tashkeel is removed
+4. **Transcription** — ASR converts speech to text, then tashkeel is removed
 5. **Comparison** — Clean original vs. clean transcribed text are compared word-for-word
 6. **Display** — The diff is rendered using the **raw original text** (with tashkeel intact) so students see proper Arabic
 
@@ -221,7 +221,7 @@ Management overview with:
 |-------|----------|
 | **Port 8000 already in use** | Kill the existing process: `lsof -ti:8000 \| xargs kill -9` then restart |
 | **Microphone not working** | Ensure the browser has microphone permissions. HTTPS is required in production |
-| **AI API errors** | Check your `API_KEY` in `.env`. Verify network connectivity to `elmodels.ngrok.app` |
+| **AI API errors** | Check your `openrouter_api_key` in `.env`. Verify network connectivity to `openrouter.ai` |
 | **Generated audio not playing** | Ensure `speeches/` directory exists and is writable |
 | **Missing dependencies** | Run `pip install -r requirements.txt` again |
 | **Database errors** | Delete `evaluations.db` to reset (⚠️ loses all data). It will be recreated on next startup |

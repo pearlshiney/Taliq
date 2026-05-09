@@ -1,12 +1,11 @@
 """
 ai_client.py - AI Model Client for Arabic Reading Evaluation App
 
-This module provides a clean wrapper around the Elmodels AI API.
+This module provides a clean wrapper around the OpenRouter AI API.
 It handles all interactions with three AI models:
-1. Nuha-2.0 (LLM) - For generating Arabic text
-2. Elm-TTS - For text-to-speech synthesis
-3. Elm-ASR - For automatic speech recognition
-
+1. LLM - For generating Arabic text (via OpenRouter chat completions)
+2. TTS - For text-to-speech synthesis (via OpenRouter audio/speech)
+3. ASR - For automatic speech recognition (via OpenRouter audio/transcriptions)
 
 """
 
@@ -18,37 +17,38 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Access them using os.getenv()
-API_KEY=os.getenv('API_KEY')
+OPENROUTER_API_KEY = os.getenv('openrouter_api_key')
 
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
 
-# Initialize the OpenAI client with Elmodels API configuration
+# Initialize the OpenAI client with OpenRouter API configuration
 # This client is compatible with OpenAI's API format
 client = OpenAI(
-    api_key = API_KEY,  # API key for Elmodels
-    base_url="https://elmodels.ngrok.app/v1"  # Base URL for Elmodels API
+    api_key=OPENROUTER_API_KEY,  # API key for OpenRouter
+    base_url="https://openrouter.ai/api/v1"  # Base URL for OpenRouter API
 )
 
-# Model names as specified in requirements
-LLM_MODEL = "nuha-2.0"      # For Arabic text generation
-TTS_MODEL = "elm-tts"       # For text-to-speech
-ASR_MODEL = "elm-asr"       # For speech-to-text
+# Model names as specified on OpenRouter
+# These can be changed to any compatible model available on OpenRouter
+LLM_MODEL = "google/gemini-2.0-flash-001"      # For Arabic text generation
+TTS_MODEL = "openai/tts-1"                     # For text-to-speech
+ASR_MODEL = "openai/whisper-1"                 # For speech-to-text
 
-# Default voice for TTS (as per API requirements)
-TTS_VOICE = "default"
+# Default voice for TTS (OpenAI voices: alloy, echo, fable, onyx, nova, shimmer)
+TTS_VOICE = "alloy"
 
 
 # =============================================================================
-# NUHA LLM FUNCTIONS
+# LLM FUNCTIONS
 # =============================================================================
 
-def ask_nuha(difficulty: str, length: str) -> str:
+def ask_llm(difficulty: str, length: str) -> str:
     """
-    Generate Arabic text using the Nuha-2.0 LLM model.
+    Generate Arabic text using an LLM via OpenRouter.
     
-    This function sends a prompt to Nuha asking for Arabic text suitable
+    This function sends a prompt to the LLM asking for Arabic text suitable
     for reading practice based on the specified difficulty and length.
     
     Args:
@@ -62,13 +62,13 @@ def ask_nuha(difficulty: str, length: str) -> str:
         Exception: If the API call fails
     
     Example:
-        >>> text = ask_nuha("beginner", "short")
+        >>> text = ask_llm("beginner", "short")
         >>> print(text)
         "مرحباً، كيف حالك اليوم؟ أتمنى أن تكون بخير..."
     """
     try:
         # Build the system prompt to guide the model
-        # We instruct Nuha to generate appropriate Arabic text
+        # We instruct the LLM to generate appropriate Arabic text
         system_prompt = (
             "أنت مساعد متخصص في تعليم اللغة العربية. "
             "قم بإنشاء نصوص عربية مناسبة للطلاب لممارسة القراءة. "
@@ -103,7 +103,7 @@ def ask_nuha(difficulty: str, length: str) -> str:
             {"role": "user", "content": user_prompt}
         ]
         
-        # Call the Nuha LLM model
+        # Call the LLM model via OpenRouter
         # We use streaming=False to get the complete response at once
         response = client.chat.completions.create(
             model=LLM_MODEL,
@@ -120,17 +120,17 @@ def ask_nuha(difficulty: str, length: str) -> str:
         
     except Exception as e:
         # Log the error and re-raise with a user-friendly message
-        print(f"[ERROR] Failed to generate text with Nuha: {str(e)}")
+        print(f"[ERROR] Failed to generate text with LLM: {str(e)}")
         raise Exception(f"فشل في توليد النص: {str(e)}")
 
 
 # =============================================================================
-# ELM TTS FUNCTIONS
+# TTS FUNCTIONS
 # =============================================================================
 
 def generate_speech_file(text: str, output_path: str) -> str:
     """
-    Generate speech audio file from Arabic text using Elm-TTS.
+    Generate speech audio file from Arabic text using TTS via OpenRouter.
     
     This function converts Arabic text to speech and saves it to the
     specified file path. The generated audio can be used for correct
@@ -156,7 +156,7 @@ def generate_speech_file(text: str, output_path: str) -> str:
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
         
-        # Call the Elm TTS model with streaming response
+        # Call the TTS model with streaming response
         # We use with_streaming_response for efficient file writing
         with client.audio.speech.with_streaming_response.create(
             model=TTS_MODEL,
@@ -170,17 +170,17 @@ def generate_speech_file(text: str, output_path: str) -> str:
         
     except Exception as e:
         # Log the error and re-raise with a user-friendly message
-        print(f"[ERROR] Failed to generate speech with Elm-TTS: {str(e)}")
+        print(f"[ERROR] Failed to generate speech with TTS: {str(e)}")
         raise Exception(f"فشل في توليد الصوت: {str(e)}")
 
 
 # =============================================================================
-# ELM ASR FUNCTIONS
+# ASR FUNCTIONS
 # =============================================================================
 
 def transcribe_audio(audio_file_path: str) -> str:
     """
-    Transcribe Arabic audio to text using Elm-ASR.
+    Transcribe Arabic audio to text using ASR via OpenRouter.
     
     This function takes an audio file and converts it to Arabic text.
     Supports common audio formats like MP3, WAV, OGG, WebM.
@@ -207,7 +207,7 @@ def transcribe_audio(audio_file_path: str) -> str:
         # Open the audio file in binary mode
         # The API handles format detection automatically
         with open(audio_file_path, "rb") as audio_file:
-            # Call the Elm ASR model for transcription
+            # Call the ASR model for transcription via OpenRouter
             transcription = client.audio.transcriptions.create(
                 model=ASR_MODEL,
                 file=audio_file
@@ -225,7 +225,7 @@ def transcribe_audio(audio_file_path: str) -> str:
         
     except Exception as e:
         # Log the error and re-raise with a user-friendly message
-        print(f"[ERROR] Failed to transcribe audio with Elm-ASR: {str(e)}")
+        print(f"[ERROR] Failed to transcribe audio with ASR: {str(e)}")
         raise Exception(f"فشل في تحويل الصوت لنص: {str(e)}")
 
 
@@ -239,7 +239,7 @@ def transcribe_audio(audio_file_path: str) -> str:
 
 def remove_tashkeel(text: str) -> str:
     """
-    Remove Arabic diacritics (tashkeel) from text using Nuha-2.0 LLM.
+    Remove Arabic diacritics (tashkeel) from text using an LLM via OpenRouter.
     
     This ensures clean text for both TTS generation and text comparison,
     preventing pronunciation issues caused by incorrect harakat.
@@ -283,7 +283,7 @@ def remove_tashkeel(text: str) -> str:
         return cleaned_text
         
     except Exception as e:
-        print(f"[ERROR] Failed to remove tashkeel with Nuha: {str(e)}")
+        print(f"[ERROR] Failed to remove tashkeel with LLM: {str(e)}")
         raise Exception(f"فشل في إزالة التشكيل: {str(e)}")
 
 
@@ -320,4 +320,4 @@ if __name__ == "__main__":
     print(f"TTS Model: {TTS_MODEL}")
     print(f"ASR Model: {ASR_MODEL}")
     print("\nAI Client module loaded successfully!")
-    print("Use the functions: ask_nuha(), generate_speech_file(), transcribe_audio()")
+    print("Use the functions: ask_llm(), generate_speech_file(), transcribe_audio()")
